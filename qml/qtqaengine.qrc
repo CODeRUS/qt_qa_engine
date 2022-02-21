@@ -10,7 +10,7 @@
  -->
 
 <RCC>
-    <qresource prefix="/qt-project.org/imports/QAEngine">
-        <file>1_0/TouchIndicator.qml</file>
+    <qresource prefix="/QAEngine">
+        <file>TouchIndicator.qml</file>
     </qresource>
 </RCC>

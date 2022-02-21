@@ -1,6 +1,6 @@
 // Copyright (c) 2019-2020 Open Mobile Platform LLC.
-#include "ITransportServer.h"
-#include "ITransportClient.h"
+#include <qt_qa_engine/ITransportClient.h>
+#include <qt_qa_engine/ITransportServer.h>
 
 #include <QDebug>
 #include <QJsonDocument>

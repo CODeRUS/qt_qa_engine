@@ -1,14 +1,14 @@
 // Copyright (c) 2019-2020 Open Mobile Platform LLC.
-#include "QAMouseEngine.h"
-#include "IEnginePlatform.h"
-#include "QAEngine.h"
-#include "QAPendingEvent.h"
+#include <qt_qa_engine/IEnginePlatform.h>
+#include <qt_qa_engine/QAEngine.h>
+#include <qt_qa_engine/QAMouseEngine.h>
+#include <qt_qa_engine/QAPendingEvent.h>
 
-#include "qpa/qwindowsysteminterface_p.h"
 #include <QMouseEvent>
 #include <QTimer>
 #include <QtMath>
 #include <private/qvariantanimation_p.h>
+#include <qpa/qwindowsysteminterface_p.h>
 
 #include <QElapsedTimer>
 

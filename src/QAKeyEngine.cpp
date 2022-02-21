@@ -1,6 +1,6 @@
 // Copyright (c) 2019-2020 Open Mobile Platform LLC.
-#include "QAKeyEngine.h"
-#include "QAPendingEvent.h"
+#include <qt_qa_engine/QAKeyEngine.h>
+#include <qt_qa_engine/QAPendingEvent.h>
 
 #include <QChar>
 #include <QDebug>

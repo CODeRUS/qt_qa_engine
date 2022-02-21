@@ -11,14 +11,17 @@
 
 TARGET = qaengine
 
-TEMPLATE = lib
-CONFIG += plugin
-TARGET = $$qtLibraryTarget($$TARGET)
-TARGETPATH = $$[QT_INSTALL_LIBS]
-target.path = $$TARGETPATH
+TARGETPATH = AutoQA/QAEngine
+android {
+    TEMPLATE = lib
+    CONFIG += plugin
+    TARGET = $$qtLibraryTarget($$TARGET)
+    installPath = $$[QT_INSTALL_QML]/$$TARGETPATH
+    target.path = $$installPath
+    INSTALLS += target
+}
 
-INSTALLS = target
-
+# TODO: uncomment xmlpatterns after KDM-1227 resolved
 QT += qml core network quick quick-private core-private #xmlpatterns
 CONFIG += plugin
 CONFIG += c++11
@@ -38,18 +41,20 @@ SOURCES += \
     src/TCPSocketServer.cpp
 
 HEADERS += \
-    src/GenericEnginePlatform.h \
-    src/IEnginePlatform.h \
-    src/ITransportClient.h \
-    src/ITransportServer.h \
-    src/QAEngine.h \
-    src/QAEngineSocketClient.h \
-    src/QAKeyEngine.h \
-    src/QAMouseEngine.h \
-    src/QAPendingEvent.h \
-    src/QuickEnginePlatform.h \
-    src/TCPSocketClient.h \
-    src/TCPSocketServer.h
+    include/qt_qa_engine/GenericEnginePlatform.h \
+    include/qt_qa_engine/IEnginePlatform.h \
+    include/qt_qa_engine/ITransportClient.h \
+    include/qt_qa_engine/ITransportServer.h \
+    include/qt_qa_engine/QAEngine.h \
+    include/qt_qa_engine/QAEngineSocketClient.h \
+    include/qt_qa_engine/QAKeyEngine.h \
+    include/qt_qa_engine/QAMouseEngine.h \
+    include/qt_qa_engine/QAPendingEvent.h \
+    include/qt_qa_engine/QuickEnginePlatform.h \
+    include/qt_qa_engine/TCPSocketClient.h \
+    include/qt_qa_engine/TCPSocketServer.h
+
+INCLUDEPATH += include
 
 RESOURCES += \
     qml/qtqaengine.qrc

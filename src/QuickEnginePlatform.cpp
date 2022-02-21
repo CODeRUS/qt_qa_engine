@@ -1,9 +1,9 @@
 // Copyright (c) 2019-2020 Open Mobile Platform LLC.
-#include "QuickEnginePlatform.h"
-#include "ITransportClient.h"
-#include "QAEngine.h"
-#include "QAKeyEngine.h"
-#include "QAMouseEngine.h"
+#include <qt_qa_engine/ITransportClient.h>
+#include <qt_qa_engine/QAEngine.h>
+#include <qt_qa_engine/QAKeyEngine.h>
+#include <qt_qa_engine/QAMouseEngine.h>
+#include <qt_qa_engine/QuickEnginePlatform.h>
 
 #include <QBuffer>
 #include <QDebug>
@@ -244,7 +244,7 @@ void QuickEnginePlatform::initialize()
     // initialize touch indicator
     QQmlEngine* engine = getEngine();
     engine->clearComponentCache();
-    QQmlComponent component(engine, QUrl(QStringLiteral("qrc:/View/debug/TouchIndicator.qml")));
+    QQmlComponent component(engine, QUrl(QStringLiteral("qrc:/QAEngine/TouchIndicator.qml")));
     if (!component.isReady())
     {
         qWarning() << Q_FUNC_INFO << component.errorString();

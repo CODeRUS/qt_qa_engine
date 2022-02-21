@@ -5,7 +5,7 @@ Item {
     width: 1
     height: 1
     opacity: 0.0
-    property int size: Theme.itemSizeSmall
+    property int size: 24
 
     function show(point, psize) {
         hideAnimation.stop()
@@ -14,7 +14,7 @@ Item {
         if (psize && psize.width > 0) {
             size = psize.width
         } else {
-            size = Theme.itemSizeSmall
+            size = 24
         }
         opacity = 1.0
     }
