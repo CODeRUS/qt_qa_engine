@@ -27,8 +27,8 @@ include(GNUInstallDirs)
 set(CMAKE_INCLUDE_CURRENT_DIR ON)
 
 set(LIBS "")
-set(LIB_DEFS "")
-set(LIB_INCLUDES "")
+set(LIBS_DEFS "")
+set(LIBS_INCLUDES "")
 
 if(UNIX AND NOT APPLE)
     # Linux
@@ -54,6 +54,7 @@ list(APPEND LIBS Qt5::Quick)
 # For uiapplication.h
 find_package(Qt5 ${CURRENT_QT_VERSION} COMPONENTS Gui REQUIRED)
 list(APPEND LIBS_INCLUDES ${Qt5Gui_INCLUDE_DIRS})
+list(APPEND LIBS_INCLUDES ${Qt5Gui_PRIVATE_INCLUDE_DIRS})
 list(APPEND LIBS_DEFS ${Qt5Gui_DEFINITIONS})
 list(APPEND LIBS Qt5::Gui)
 
@@ -72,6 +73,17 @@ if(UNIX AND NOT APPLE AND NOT ANDROID)
     list(APPEND LIBS_DEFS ${Qt5Widgets_DEFINITIONS})
     list(APPEND LIBS Qt5::Widgets)
 endif()
+
+# workaround for ios cmake bug with wrong paths in _PRIVATE_INCLUDE_DIRS
+# removing Versions/5/ from its paths
+foreach(di ${LIBS_INCLUDES})
+    if(NOT IS_DIRECTORY ${di})
+        string(REPLACE "Versions/5/" "" do "${di}")
+        if(NOT "${di}" STREQUAL "${do}" AND IS_DIRECTORY ${do})
+            list(APPEND LIBS_INCLUDES ${do})
+        endif()
+    endif()
+endforeach()
 
 if (MO_PLATFORM_MOBILE)
     add_definitions(-DMO_PLATFORM_MOBILE)
@@ -117,6 +129,12 @@ target_include_directories(${PROJECT_NAME}
         $<BUILD_INTERFACE:${${PROJECT_NAME}_SOURCE_DIR}/include>
         $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}/${PROJECT_NAME}>
 )
+
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -frtti -fexceptions -fPIC")
+
+if (MO_OS_IOS)
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fembed-bitcode")
+endif()
 
 # Installation
 include(CMakePackageConfigHelpers)
