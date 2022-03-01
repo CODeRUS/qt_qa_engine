@@ -60,6 +60,8 @@ QQuickItem* QuickEnginePlatform::getItem(const QString& elementId)
 QuickEnginePlatform::QuickEnginePlatform(QWindow* window)
     : GenericEnginePlatform(window)
 {
+    Q_INIT_RESOURCE(qtqaengine);
+
     m_mouseEngine->setMode(QAMouseEngine::TouchEventMode);
 }
 
