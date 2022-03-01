@@ -29,6 +29,7 @@ Q_LOGGING_CATEGORY(categoryEngine, "qaengine.engine", QtWarningMsg)
 namespace
 {
 
+bool s_engineLoaded = false;
 QAEngine* s_instance = nullptr;
 
 QString s_processName = "qaengine";
@@ -90,7 +91,7 @@ IEnginePlatform* QAEngine::getPlatform(bool silent)
     return nullptr;
 }
 
-void QAEngine::initialize()
+void QAEngine::initializeSocket()
 {
     qCDebug(categoryEngine) << Q_FUNC_INFO << endl
                             << "name:" << qApp->arguments().first() << endl
@@ -104,6 +105,20 @@ void QAEngine::initialize()
 #endif
 
     m_socketServer->start();
+}
+
+void QAEngine::initializeEngine()
+{
+    if (s_engineLoaded)
+    {
+        return;
+    }
+    s_engineLoaded = true;
+
+    qCDebug(categoryEngine) << Q_FUNC_INFO << endl;
+
+    qtHookData[QHooks::RemoveQObject] = reinterpret_cast<quintptr>(&QAEngine::objectRemoved);
+    qtHookData[QHooks::AddQObject] = reinterpret_cast<quintptr>(&QAEngine::objectCreated);
 
     connect(qApp,
             &QCoreApplication::aboutToQuit,
@@ -177,8 +192,6 @@ void QAEngine::onFocusWindowChanged(QWindow* window)
 
 void QAEngine::onPlatformReady()
 {
-    qtHookData[QHooks::RemoveQObject] = reinterpret_cast<quintptr>(&QAEngine::objectRemoved);
-    qtHookData[QHooks::AddQObject] = reinterpret_cast<quintptr>(&QAEngine::objectCreated);
 
     IEnginePlatform* platform = qobject_cast<IEnginePlatform*>(sender());
     if (!platform)
@@ -187,7 +200,7 @@ void QAEngine::onPlatformReady()
     }
 
     s_processName = QFileInfo(qApp->arguments().first()).baseName();
-    ;
+
     qCDebug(categoryEngine) << Q_FUNC_INFO << "Process name:" << s_processName
                             << "platform:" << platform << platform->window()
                             << platform->rootObject();
@@ -337,6 +350,11 @@ void QAEngine::processCommand(ITransportClient* socket, const QByteArray& cmd)
     if (!object.contains(QStringLiteral("action")))
     {
         return;
+    }
+
+    if (!s_engineLoaded)
+    {
+        initializeEngine();
     }
 
     const QString action = object.value(QStringLiteral("action")).toVariant().toString();

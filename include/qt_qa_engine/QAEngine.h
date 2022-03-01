@@ -32,7 +32,8 @@ public:
     void removeItem(QObject* o);
 
 public slots:
-    void initialize();
+    void initializeSocket();
+    void initializeEngine();
 
 private slots:
     void onFocusWindowChanged(QWindow* window);
