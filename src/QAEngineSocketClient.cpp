@@ -14,7 +14,7 @@
 
 #include <QLoggingCategory>
 
-Q_LOGGING_CATEGORY(categorySocketClient, "omp.qaengine.socket", QtWarningMsg)
+Q_LOGGING_CATEGORY(categorySocketClient, "autoqa.qaengine.socket", QtWarningMsg)
 
 QAEngineSocketClient::QAEngineSocketClient(QObject* parent)
     : QObject(parent)
