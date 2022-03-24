@@ -62,7 +62,9 @@ QuickEnginePlatform::QuickEnginePlatform(QWindow* window)
 {
     Q_INIT_RESOURCE(qtqaengine);
 
+#if defined(Q_OS_ANDROID) || defined(MO_OS_IOS)
     m_mouseEngine->setMode(QAMouseEngine::TouchEventMode);
+#endif
 }
 
 QQuickItem* QuickEnginePlatform::findParentFlickable(QQuickItem* rootItem)
