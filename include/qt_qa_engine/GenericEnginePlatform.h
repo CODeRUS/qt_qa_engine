@@ -114,7 +114,7 @@ private slots:
 
     // IEnginePlatform interface
     virtual void appConnectCommand(ITransportClient* socket) override;
-    virtual void appDisconnectCommand(ITransportClient* socket, bool autoLaunch) override;
+    virtual void appDisconnectCommand(ITransportClient* socket) override;
 
     virtual void initializeCommand(ITransportClient* socket, const QString& appName) override;
     virtual void activateAppCommand(ITransportClient* socket, const QString& appName) override;

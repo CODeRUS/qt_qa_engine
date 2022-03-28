@@ -836,9 +836,9 @@ void GenericEnginePlatform::appConnectCommand(ITransportClient* socket)
     socketReply(socket, QString());
 }
 
-void GenericEnginePlatform::appDisconnectCommand(ITransportClient* socket, bool autoLaunch)
+void GenericEnginePlatform::appDisconnectCommand(ITransportClient* socket)
 {
-    qDebug() << Q_FUNC_INFO << socket << autoLaunch;
+    qDebug() << Q_FUNC_INFO << socket;
     socketReply(socket, QString());
 }
 
