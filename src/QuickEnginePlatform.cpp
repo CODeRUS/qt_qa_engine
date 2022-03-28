@@ -247,7 +247,6 @@ void QuickEnginePlatform::initialize()
 
     // initialize touch indicator
     QQmlEngine* engine = getEngine();
-    engine->clearComponentCache();
     QQmlComponent component(engine, QUrl(QStringLiteral("qrc:/QAEngine/TouchIndicator.qml")));
     if (!component.isReady())
     {
@@ -299,8 +298,21 @@ bool QuickEnginePlatform::eventFilter(QObject* watched, QEvent* event)
                 Q_ARG(QVariant, te->touchPoints().first().rect().size().toSize()));
             break;
         }
+        case QEvent::MouseButtonPress:
+        case QEvent::MouseButtonDblClick:
+        {
+            QMouseEvent* me = static_cast<QMouseEvent*>(event);
+            qCDebug(categoryQuickEnginePlatform) << Q_FUNC_INFO << me->pos() << me->globalPos();
+            QMetaObject::invokeMethod(m_touchIndicator,
+                                      "show",
+                                      Qt::QueuedConnection,
+                                      Q_ARG(QVariant, me->windowPos()),
+                                      Q_ARG(QVariant, QSize(32, 32)));
+            break;
+        }
         case QEvent::TouchEnd:
         case QEvent::TouchCancel:
+        case QEvent::MouseButtonRelease:
         {
             QMetaObject::invokeMethod(m_touchIndicator, "hide", Qt::QueuedConnection);
         }
