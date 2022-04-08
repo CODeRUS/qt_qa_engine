@@ -29,6 +29,8 @@ set(CMAKE_INCLUDE_CURRENT_DIR ON)
 set(LIBS "")
 set(LIBS_DEFS "")
 set(LIBS_INCLUDES "")
+set(${PROJECT_NAME}_HEADERS "")
+set(${PROJECT_NAME}_SOURCES "")
 
 if(UNIX AND NOT APPLE)
     # Linux
@@ -65,13 +67,17 @@ list(APPEND LIBS_INCLUDES ${Qt5Qml_INCLUDE_DIRS})
 list(APPEND LIBS_DEFS ${Qt5Qml_DEFINITIONS})
 list(APPEND LIBS Qt5::Qml)
 
-# Find widgets module but only for linux build (used for system file dialog)
-if(UNIX AND NOT APPLE AND NOT ANDROID)
+# Find widgets module
+if (MO_USE_QWIDGETS)
+    add_definitions(-DMO_USE_QWIDGETS)
     find_package(Qt5 ${CURRENT_QT_VERSION} COMPONENTS Widgets REQUIRED)
     list(APPEND LIBS_INCLUDES ${Qt5Widgets_INCLUDE_DIRS})
     list(APPEND LIBS_INCLUDES ${Qt5Widgets_PRIVATE_INCLUDE_DIRS})
     list(APPEND LIBS_DEFS ${Qt5Widgets_DEFINITIONS})
     list(APPEND LIBS Qt5::Widgets)
+
+    list(APPEND ${PROJECT_NAME}_HEADERS include/qt_qa_engine/WidgetsEnginePlatform.h)
+    list(APPEND ${PROJECT_NAME}_SOURCES src/WidgetsEnginePlatform.cpp)
 endif()
 
 # workaround for ios cmake bug with wrong paths in _PRIVATE_INCLUDE_DIRS
@@ -89,8 +95,37 @@ if (MO_PLATFORM_MOBILE)
     add_definitions(-DMO_PLATFORM_MOBILE)
 endif()
 
-file (GLOB_RECURSE ${PROJECT_NAME}_SOURCES *.cpp)
-file (GLOB_RECURSE ${PROJECT_NAME}_HEADERS *.h)
+list(APPEND
+    ${PROJECT_NAME}_HEADERS
+    include/qt_qa_engine/GenericEnginePlatform.h
+    include/qt_qa_engine/ITransportServer.h
+    include/qt_qa_engine/QAKeyEngine.h
+    include/qt_qa_engine/QuickEnginePlatform.h
+    include/qt_qa_engine/IEnginePlatform.h
+    include/qt_qa_engine/QAEngine.h
+    include/qt_qa_engine/QAMouseEngine.h
+    include/qt_qa_engine/TCPSocketClient.h
+    include/qt_qa_engine/ITransportClient.h
+    include/qt_qa_engine/QAEngineSocketClient.h
+    include/qt_qa_engine/QAPendingEvent.h
+    include/qt_qa_engine/TCPSocketServer.h
+)
+
+list(APPEND
+    ${PROJECT_NAME}_SOURCES
+    src/GenericEnginePlatform.cpp
+    src/QAEngine.cpp
+    src/QAPendingEvent.cpp
+    src/IEnginePlatform.cpp
+    src/QAEngineSocketClient.cpp
+    src/QuickEnginePlatform.cpp
+    src/ITransportClient.cpp
+    src/QAKeyEngine.cpp
+    src/TCPSocketClient.cpp
+    src/ITransportServer.cpp
+    src/QAMouseEngine.cpp
+    src/TCPSocketServer.cpp
+)
 
 qt5_add_resources(QRC_RESOURCES qml/qtqaengine.qrc)
 

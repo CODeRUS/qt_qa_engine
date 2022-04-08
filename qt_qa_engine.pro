@@ -26,6 +26,13 @@ QT += qml core network quick quick-private core-private #xmlpatterns
 CONFIG += plugin
 CONFIG += c++11
 
+contains(DEFINES, MO_USE_QWIDGETS) {
+    QT += widgets widgets-private
+
+    SOURCES += src/WidgetsEnginePlatform.cpp
+    HEADERS += include/qt_qa_engine/WidgetsEnginePlatform.h
+}
+
 SOURCES += \
     src/GenericEnginePlatform.cpp \
     src/IEnginePlatform.cpp \

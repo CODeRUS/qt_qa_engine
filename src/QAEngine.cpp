@@ -5,6 +5,11 @@
 #include <qt_qa_engine/QuickEnginePlatform.h>
 #include <qt_qa_engine/TCPSocketServer.h>
 
+#if defined(MO_USE_QWIDGETS)
+#include <QApplication>
+#include <qt_qa_engine/WidgetsEnginePlatform.h>
+#endif
+
 #include <QCoreApplication>
 #include <QDateTime>
 #include <QDebug>
@@ -170,7 +175,11 @@ void QAEngine::onFocusWindowChanged(QWindow* window)
         }
         else
         {
+#if defined(MO_USE_QWIDGETS)
+            platform = new WidgetsEnginePlatform(window);
+#else
             return;
+#endif
         }
         connect(platform, &IEnginePlatform::ready, this, &QAEngine::onPlatformReady);
         connect(window,
