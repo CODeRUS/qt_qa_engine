@@ -63,20 +63,20 @@ private slots:
                                                const QString& display);
     void executeCommand_app_activateInComboBox(ITransportClient* socket,
                                                const QString& elementId,
-                                               double idx);
+                                               qlonglong idx);
     void executeCommand_app_dumpInTabBar(ITransportClient* socket, const QString& elementId);
     void executeCommand_app_posInTabBar(ITransportClient* socket,
                                         const QString& elementId,
                                         const QString& display);
     void executeCommand_app_posInTabBar(ITransportClient* socket,
                                         const QString& elementId,
-                                        double idx);
+                                        qlonglong idx);
     void executeCommand_app_activateInTabBar(ITransportClient* socket,
                                              const QString& elementId,
                                              const QString& display);
     void executeCommand_app_activateInTabBar(ITransportClient* socket,
                                              const QString& elementId,
-                                             double idx);
+                                             qlonglong idx);
 
 private:
     QModelIndex recursiveFindModel(QAbstractItemModel* model,

@@ -46,7 +46,7 @@ private slots:
     virtual void activateAppCommand(ITransportClient* socket, const QString& appName) = 0;
     virtual void closeAppCommand(ITransportClient* socket, const QString& appName) = 0;
     virtual void queryAppStateCommand(ITransportClient* socket, const QString& appName) = 0;
-    virtual void backgroundCommand(ITransportClient* socket, double seconds) = 0;
+    virtual void backgroundCommand(ITransportClient* socket, qlonglong seconds) = 0;
     virtual void getClipboardCommand(ITransportClient* socket) = 0;
     virtual void setClipboardCommand(ITransportClient* socket, const QString& content) = 0;
     virtual void findElementCommand(ITransportClient* socket,
@@ -101,10 +101,10 @@ private slots:
     virtual void hideKeyboardCommand(ITransportClient* socket,
                                      const QString& strategy,
                                      const QString& key = QString(),
-                                     double keyCode = 0,
+                                     qlonglong keyCode = 0,
                                      const QString& keyName = QString()) = 0;
     virtual void getCurrentActivityCommand(ITransportClient* socket) = 0;
-    virtual void implicitWaitCommand(ITransportClient* socket, double msecs) = 0; // ?
+    virtual void implicitWaitCommand(ITransportClient* socket, qlonglong msecs) = 0; // ?
     virtual void activeCommand(
         ITransportClient* socket) = 0; // for functions switch_to.active_element
     virtual void getAlertTextCommand(ITransportClient* socket) = 0; // for functions switch_to.alert

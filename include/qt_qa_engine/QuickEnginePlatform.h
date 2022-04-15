@@ -59,11 +59,13 @@ private slots:
     virtual void onKeyEvent(QKeyEvent* event) override;
 
     // execute_%1 methods
-    void executeCommand_touch_pressAndHold(ITransportClient* socket, double posx, double posy);
+    void executeCommand_touch_pressAndHold(ITransportClient* socket,
+                                           qlonglong posx,
+                                           qlonglong posy);
     void executeCommand_touch_mouseSwipe(
-        ITransportClient* socket, double posx, double posy, double stopx, double stopy);
+        ITransportClient* socket, qlonglong posx, qlonglong posy, qlonglong stopx, qlonglong stopy);
     void executeCommand_touch_mouseDrag(
-        ITransportClient* socket, double posx, double posy, double stopx, double stopy);
+        ITransportClient* socket, qlonglong posx, qlonglong posy, qlonglong stopx, qlonglong stopy);
     void executeCommand_app_method(ITransportClient* socket,
                                    const QString& elementId,
                                    const QString& method,
