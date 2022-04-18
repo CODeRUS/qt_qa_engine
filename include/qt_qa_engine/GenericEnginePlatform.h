@@ -81,7 +81,7 @@ protected:
     void mouseMove(int startx, int starty, int stopx, int stopy);
     void mouseDrag(int startx, int starty, int stopx, int stopy, int delay = 1200);
     void processTouchActionList(const QVariant& actionListArg);
-    void waitForPropertyChange(QObject* item,
+    bool waitForPropertyChange(QObject* item,
                                const QString& propertyName,
                                const QVariant& value,
                                int timeout = 10000);

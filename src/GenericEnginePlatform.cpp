@@ -674,7 +674,7 @@ void GenericEnginePlatform::processTouchActionList(const QVariant& actionListArg
     }
 }
 
-void GenericEnginePlatform::waitForPropertyChange(QObject* item,
+bool GenericEnginePlatform::waitForPropertyChange(QObject* item,
                                                   const QString& propertyName,
                                                   const QVariant& value,
                                                   int timeout)
@@ -685,25 +685,25 @@ void GenericEnginePlatform::waitForPropertyChange(QObject* item,
     if (!item)
     {
         qCWarning(categoryGenericEnginePlatform) << "item is null" << item;
-        return;
+        return false;
     }
     int propertyIndex = item->metaObject()->indexOfProperty(propertyName.toLatin1().constData());
     if (propertyIndex < 0)
     {
         qCWarning(categoryGenericEnginePlatform)
             << Q_FUNC_INFO << item << "property" << propertyName << "is not valid!";
-        return;
+        return false;
     }
     const QMetaProperty prop = item->metaObject()->property(propertyIndex);
     if (prop.read(item) == value)
     {
-        return;
+        return false;
     }
     if (!prop.hasNotifySignal())
     {
         qCWarning(categoryGenericEnginePlatform)
             << Q_FUNC_INFO << item << "property" << propertyName << "have on notifySignal!";
-        return;
+        return false;
     }
     QEventLoop loop;
     QTimer timer;
@@ -713,10 +713,12 @@ void GenericEnginePlatform::waitForPropertyChange(QObject* item,
     const QMetaMethod propertyChanged =
         metaObject()->method(metaObject()->indexOfSlot("onPropertyChanged()"));
     connect(item, prop.notifySignal(), this, propertyChanged);
-    connect(&timer, &QTimer::timeout, &loop, &QEventLoop::quit);
+    connect(&timer, &QTimer::timeout, this, [&loop]() { loop.exit(1); });
     timer.start(timeout);
-    loop.exec();
+    int result = loop.exec();
     disconnect(item, prop.notifySignal(), this, propertyChanged);
+
+    return result == 0;
 }
 
 bool GenericEnginePlatform::checkMatch(const QString& pattern, const QString& value)
@@ -776,7 +778,7 @@ void GenericEnginePlatform::onPropertyChanged()
     const QVariant propertyValue = item->property("WaitForPropertyChangePropertyValue");
     if (!propertyValue.isValid())
     {
-        loop->quit();
+        loop->exit(1);
     }
     const QVariant property = item->property(propertyName.toLatin1().constData());
     if (property == propertyValue)
@@ -1579,8 +1581,8 @@ void GenericEnginePlatform::executeCommand_app_waitForPropertyChange(ITransportC
     QObject* item = getObject(elementId);
     if (item)
     {
-        waitForPropertyChange(item, propertyName, value, timeout);
-        socketReply(socket, QString());
+        bool result = waitForPropertyChange(item, propertyName, value, timeout);
+        socketReply(socket, QString(), result ? 0 : 1);
     }
     else
     {
