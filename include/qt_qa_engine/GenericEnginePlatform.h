@@ -74,12 +74,12 @@ protected:
                                 bool fillBackground = false) = 0;
     void clickItem(QObject* item);
 
-    void clickPoint(int posx, int posy);
+    void clickPoint(float posx, float posy);
     void clickPoint(const QPoint& pos);
     virtual void pressAndHoldItem(QObject* item, int delay = 800) = 0;
-    void pressAndHold(int posx, int posy, int delay = 800);
-    void mouseMove(int startx, int starty, int stopx, int stopy);
-    void mouseDrag(int startx, int starty, int stopx, int stopy, int delay = 1200);
+    void pressAndHold(float posx, float posy, int delay = 800);
+    void mouseMove(float startx, float starty, float stopx, float stopy);
+    void mouseDrag(float startx, float starty, float stopx, float stopy, int delay = 1200);
     void processTouchActionList(const QVariant& actionListArg);
     bool waitForPropertyChange(QObject* item,
                                const QString& propertyName,

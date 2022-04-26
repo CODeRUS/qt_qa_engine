@@ -557,7 +557,7 @@ void GenericEnginePlatform::setProperty(ITransportClient* socket,
     }
 }
 
-void GenericEnginePlatform::clickPoint(int posx, int posy)
+void GenericEnginePlatform::clickPoint(float posx, float posy)
 {
     qCDebug(categoryGenericEnginePlatform) << Q_FUNC_INFO << posx << posy;
 
@@ -578,7 +578,7 @@ void GenericEnginePlatform::clickPoint(const QPoint& pos)
     clickPoint(pos.x(), pos.y());
 }
 
-void GenericEnginePlatform::pressAndHold(int posx, int posy, int delay)
+void GenericEnginePlatform::pressAndHold(float posx, float posy, int delay)
 {
     qCDebug(categoryGenericEnginePlatform) << Q_FUNC_INFO << posx << posy << delay;
 
@@ -590,7 +590,7 @@ void GenericEnginePlatform::pressAndHold(int posx, int posy, int delay)
     loop.exec();
 }
 
-void GenericEnginePlatform::mouseMove(int startx, int starty, int stopx, int stopy)
+void GenericEnginePlatform::mouseMove(float startx, float starty, float stopx, float stopy)
 {
     qCDebug(categoryGenericEnginePlatform) << Q_FUNC_INFO << startx << starty << stopx << stopy;
 
@@ -606,7 +606,8 @@ void GenericEnginePlatform::mouseMove(int startx, int starty, int stopx, int sto
     loop.exec();
 }
 
-void GenericEnginePlatform::mouseDrag(int startx, int starty, int stopx, int stopy, int delay)
+void GenericEnginePlatform::mouseDrag(
+    float startx, float starty, float stopx, float stopy, int delay)
 {
     qCDebug(categoryGenericEnginePlatform)
         << Q_FUNC_INFO << startx << starty << stopx << stopy << delay;
