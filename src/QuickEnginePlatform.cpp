@@ -267,6 +267,12 @@ void QuickEnginePlatform::initialize()
     }
     item->setParent(m_rootQuickItem);
     item->setParentItem(m_rootQuickItem);
+
+    const auto childrens = childrenList(m_rootQuickItem);
+    const auto lastChildren = qobject_cast<QQuickItem*>(childrens.last());
+
+    item->setZ(lastChildren->z() + 1);
+
     m_touchIndicator = item;
     qGuiApp->installEventFilter(this);
 
