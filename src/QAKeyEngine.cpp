@@ -143,6 +143,10 @@ void QAKeyEngine::performChainActions(const QVariantList& actions)
         const QVariantMap action = actionVar.toMap();
         QKeyEvent::Type eventType = QKeyEvent::KeyPress;
         const QString type = action.value(QStringLiteral("type")).toString();
+        if (type == QLatin1String("pause"))
+        {
+            continue;
+        }
 
         QString value = action.value(QStringLiteral("value")).toString();
         const int key = seleniumKeyToQt(value.at(0).unicode());
