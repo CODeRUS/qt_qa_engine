@@ -1482,7 +1482,8 @@ void GenericEnginePlatform::performActionsCommand(ITransportClient* socket,
     QVariantList pointerArgs;
     QVariantList keyArgs;
 
-    for (const QVariant& paramsVar : paramsArg.toList())
+    const auto paramsArgList = paramsArg.toList();
+    for (const QVariant& paramsVar : qAsConst(paramsArgList))
     {
         const QVariantMap param = paramsVar.toMap();
         if (param.value(QStringLiteral("type")).toString() == QLatin1String("pointer"))
@@ -1495,8 +1496,16 @@ void GenericEnginePlatform::performActionsCommand(ITransportClient* socket,
         }
     }
 
+    if (keyArgs.size() > 0 && pointerArgs.size() > 0 && keyArgs.size() != pointerArgs.size())
+    {
+        qCWarning(categoryGenericEnginePlatform)
+            << Q_FUNC_INFO << "Found two actions lists with mismatching size!";
+    }
+
     if (!pointerArgs.isEmpty())
     {
+        qCWarning(categoryGenericEnginePlatform)
+            << Q_FUNC_INFO << "Chain actions for pointer are not implemented!";
     }
 
     if (!keyArgs.isEmpty())
