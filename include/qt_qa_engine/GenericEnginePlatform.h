@@ -54,6 +54,7 @@ protected:
                      const QString& elementId);
 
     virtual QList<QObject*> childrenList(QObject* parentItem) = 0;
+    QObject* findItemById(const QString& id, QObject* parentItem = nullptr);
     QObject* findItemByObjectName(const QString& objectName, QObject* parentItem = nullptr);
     QObjectList findItemsByClassName(const QString& className, QObject* parentItem = nullptr);
     QObjectList findItemsByProperty(const QString& propertyName,

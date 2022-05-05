@@ -149,6 +149,31 @@ void GenericEnginePlatform::findByProperty(ITransportClient* socket,
     elementReply(socket, items, multiple);
 }
 
+QObject* GenericEnginePlatform::findItemById(const QString& id, QObject* parentItem)
+{
+    qCDebug(categoryGenericEnginePlatform) << Q_FUNC_INFO << id << parentItem;
+
+    if (!parentItem)
+    {
+        parentItem = m_rootObject;
+    }
+
+    if (checkMatch(id, uniqueId(parentItem)))
+    {
+        return parentItem;
+    }
+
+    for (QObject* child : childrenList(parentItem))
+    {
+        QObject* recursiveItem = findItemById(id, child);
+        if (recursiveItem)
+        {
+            return recursiveItem;
+        }
+    }
+    return nullptr;
+}
+
 QObject* GenericEnginePlatform::findItemByObjectName(const QString& objectName, QObject* parentItem)
 {
     if (!parentItem)
@@ -1487,7 +1512,7 @@ void GenericEnginePlatform::findStrategy_id(ITransportClient* socket,
                                             bool multiple,
                                             QObject* parentItem)
 {
-    QObject* item = findItemByObjectName(selector, parentItem);
+    QObject* item = findItemById(selector, parentItem);
     qCDebug(categoryGenericEnginePlatform) << Q_FUNC_INFO << selector << multiple << item;
     elementReply(socket, {item}, multiple);
 }
@@ -1497,7 +1522,9 @@ void GenericEnginePlatform::findStrategy_objectName(ITransportClient* socket,
                                                     bool multiple,
                                                     QObject* parentItem)
 {
-    findStrategy_id(socket, selector, multiple, parentItem);
+    QObject* item = findItemByObjectName(selector, parentItem);
+    qCDebug(categoryGenericEnginePlatform) << Q_FUNC_INFO << selector << multiple << item;
+    elementReply(socket, {item}, multiple);
 }
 
 void GenericEnginePlatform::findStrategy_classname(ITransportClient* socket,
