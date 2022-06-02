@@ -68,7 +68,7 @@ protected:
 
     QJsonObject dumpObject(QObject* item, int depth = 0);
     QJsonObject recursiveDumpTree(QObject* rootItem, int depth = 0);
-    void recursiveDumpXml(QXmlStreamWriter* writer, QObject* rootItem, int depth = 0);
+    bool recursiveDumpXml(QXmlStreamWriter* writer, QObject* rootItem, int depth = 0);
 
     virtual void grabScreenshot(ITransportClient* socket,
                                 QObject* item,
@@ -217,6 +217,8 @@ private slots:
                                            const QVariant& paramsArg) override;
     virtual void performActionsCommand(ITransportClient* socket,
                                        const QVariant& paramsArg) override;
+
+    virtual void getTimeoutsCommand(ITransportClient* socket) override;
 
     // findElement_%1 methods
     void findStrategy_id(ITransportClient* socket,

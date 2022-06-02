@@ -19,7 +19,6 @@
 #include <QQuickWindow>
 #include <QScreen>
 #include <QTimer>
-#include <QXmlStreamWriter>
 
 #include <private/qquickitem_p.h>
 #include <private/qquickwindow_p.h>
@@ -421,15 +420,6 @@ QQmlEngine* QuickEnginePlatform::getEngine(QQuickItem* item)
         engine = qmlEngine(item->childItems().first());
     }
     return engine;
-}
-
-void QuickEnginePlatform::getPageSourceCommand(ITransportClient* socket)
-{
-    qCDebug(categoryQuickEnginePlatform) << Q_FUNC_INFO << socket;
-
-    // TODO
-
-    socketReply(socket, QString());
 }
 
 void QuickEnginePlatform::onKeyEvent(QKeyEvent* event)

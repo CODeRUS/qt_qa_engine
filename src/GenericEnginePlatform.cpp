@@ -482,15 +482,53 @@ QJsonObject GenericEnginePlatform::recursiveDumpTree(QObject* rootItem, int dept
     return object;
 }
 
-void GenericEnginePlatform::recursiveDumpXml(QXmlStreamWriter* writer, QObject* rootItem, int depth)
+bool GenericEnginePlatform::recursiveDumpXml(QXmlStreamWriter* writer, QObject* rootItem, int depth)
 {
+    auto visible = rootItem->property("visible");
+    if (visible.isValid() && !visible.toBool())
+    {
+        return false;
+    }
+
+    const QRect abs = getAbsGeometry(rootItem);
+    const QRect rootAbs = getAbsGeometry(m_rootObject);
+    if (!rootAbs.intersects(abs))
+    {
+        return false;
+    }
+
     const QString className = getClassName(rootItem);
     writer->writeStartElement(className);
 
     const QString id = uniqueId(rootItem);
     writer->writeAttribute(QStringLiteral("id"), id);
 
+    const QString bounds = QString("[%1,%2][%3,%4]")
+                               .arg(abs.topLeft().x())
+                               .arg(abs.topLeft().y())
+                               .arg(abs.bottomRight().x())
+                               .arg(abs.bottomRight().y());
+
     QStringList attributes;
+
+    attributes.append(QStringLiteral("x"));
+    writer->writeAttribute(QStringLiteral("x"), QString::number(abs.x()));
+
+    attributes.append(QStringLiteral("y"));
+    writer->writeAttribute(QStringLiteral("y"), QString::number(abs.y()));
+
+    attributes.append(QStringLiteral("bounds"));
+    writer->writeAttribute(QStringLiteral("bounds"), bounds);
+
+    attributes.append(QStringLiteral("objectName"));
+    writer->writeAttribute(QStringLiteral("objectName"), rootItem->objectName());
+
+    attributes.append(QStringLiteral("className"));
+    writer->writeAttribute(QStringLiteral("className"), className);
+
+    attributes.append(QStringLiteral("index"));
+    writer->writeAttribute(QStringLiteral("index"), QString::number(depth));
+
     auto mo = rootItem->metaObject();
     do
     {
@@ -516,12 +554,6 @@ void GenericEnginePlatform::recursiveDumpXml(QXmlStreamWriter* writer, QObject* 
         }
     } while ((mo = mo->superClass()));
 
-    writer->writeAttribute(QStringLiteral("zDepth"), QString::number(depth));
-
-    const QPoint abs = getAbsPosition(rootItem);
-    writer->writeAttribute(QStringLiteral("abs_x"), QString::number(abs.x()));
-    writer->writeAttribute(QStringLiteral("abs_y"), QString::number(abs.y()));
-
     QString text = getText(rootItem);
     writer->writeAttribute(QStringLiteral("mainTextProperty"), text);
 
@@ -531,12 +563,19 @@ void GenericEnginePlatform::recursiveDumpXml(QXmlStreamWriter* writer, QObject* 
     }
 
     int z = 0;
-    for (QObject* child : childrenList(rootItem))
+
+    auto children = childrenList(rootItem);
+    for (auto&& i : children)
     {
-        recursiveDumpXml(writer, child, ++z);
+        if (recursiveDumpXml(writer, i, z))
+        {
+            z++;
+        }
     }
 
     writer->writeEndElement();
+
+    return true;
 }
 
 void GenericEnginePlatform::clickItem(QObject* item)
@@ -1291,7 +1330,15 @@ void GenericEnginePlatform::submitCommand(ITransportClient* socket, const QStrin
 void GenericEnginePlatform::getPageSourceCommand(ITransportClient* socket)
 {
     qCDebug(categoryGenericEnginePlatform) << Q_FUNC_INFO << socket;
-    socketReply(socket, QStringLiteral("not_implemented"), 405);
+
+    QString out;
+    QXmlStreamWriter writer(&out);
+    writer.setAutoFormatting(false);
+    writer.writeStartDocument();
+    recursiveDumpXml(&writer, m_rootObject, 0);
+    writer.writeEndDocument();
+
+    socketReply(socket, out);
 }
 
 void GenericEnginePlatform::backCommand(ITransportClient* socket)
@@ -1514,6 +1561,17 @@ void GenericEnginePlatform::performActionsCommand(ITransportClient* socket,
     }
 
     socketReply(socket, QString());
+}
+
+void GenericEnginePlatform::getTimeoutsCommand(ITransportClient* socket)
+{
+    qCDebug(categoryGenericEnginePlatform) << Q_FUNC_INFO << socket;
+
+    QJsonObject reply{
+        {"command", 3600000},
+        {"implicit", 0},
+    };
+    socketReply(socket, reply);
 }
 
 void GenericEnginePlatform::findStrategy_id(ITransportClient* socket,
