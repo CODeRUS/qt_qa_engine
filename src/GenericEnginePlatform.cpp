@@ -1118,7 +1118,33 @@ void GenericEnginePlatform::getAttributeCommand(ITransportClient* socket,
     QObject* item = getObject(elementId);
     if (item)
     {
-        const QVariant reply = item->property(attribute.toLatin1().constData());
+        QVariant reply;
+        if (attribute == "abs_x")
+        {
+            auto a = getAbsGeometry(item);
+            reply = a.x();
+        }
+        else if (attribute == "abs_y")
+        {
+            auto a = getAbsGeometry(item);
+            reply = a.y();
+        }
+        else if (attribute == "mainTextProperty")
+        {
+            reply = getText(item);
+        }
+        else if (attribute == "className")
+        {
+            reply = getClassName(item);
+        }
+        else if (attribute == "objectName")
+        {
+            reply = item->objectName();
+        }
+        else
+        {
+            reply = item->property(attribute.toLatin1().constData());
+        }
         socketReply(socket, reply);
     }
     else
@@ -1131,18 +1157,7 @@ void GenericEnginePlatform::getPropertyCommand(ITransportClient* socket,
                                                const QString& attribute,
                                                const QString& elementId)
 {
-    qCDebug(categoryGenericEnginePlatform) << Q_FUNC_INFO << socket << attribute << elementId;
-
-    QObject* item = getObject(elementId);
-    if (item)
-    {
-        const QVariant reply = item->property(attribute.toLatin1().constData());
-        socketReply(socket, reply);
-    }
-    else
-    {
-        socketReply(socket, QString());
-    }
+    getAttributeCommand(socket, attribute, elementId);
 }
 
 void GenericEnginePlatform::getTextCommand(ITransportClient* socket, const QString& elementId)
