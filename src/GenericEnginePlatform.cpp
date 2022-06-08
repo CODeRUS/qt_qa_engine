@@ -127,12 +127,12 @@ void GenericEnginePlatform::findElement(ITransportClient* socket,
         << Q_FUNC_INFO << socket << strategy << selector << multiple << item;
 
     QString fixStrategy = strategy;
-    fixStrategy = fixStrategy.remove(QChar(u' '));
+    fixStrategy = fixStrategy.remove(QChar(u' ')).toLower();
     const QString methodName = QStringLiteral("findStrategy_%1").arg(fixStrategy);
     if (!QAEngine::metaInvoke(
             socket, this, methodName, {selector, multiple, QVariant::fromValue(item)}))
     {
-        findByProperty(socket, fixStrategy, selector, multiple, item);
+        findByProperty(socket, strategy, selector, multiple, item);
     }
 }
 
