@@ -174,8 +174,12 @@ QObject* GenericEnginePlatform::findItemById(const QString& id, QObject* parentI
     return nullptr;
 }
 
-QObject* GenericEnginePlatform::findItemByObjectName(const QString& objectName, QObject* parentItem)
+QObjectList GenericEnginePlatform::findItemsByObjectName(const QString& objectName,
+                                                         QObject* parentItem)
 {
+    qCDebug(categoryGenericEnginePlatform) << Q_FUNC_INFO << objectName << parentItem;
+    QObjectList items;
+
     if (!parentItem)
     {
         parentItem = m_rootObject;
@@ -183,19 +187,15 @@ QObject* GenericEnginePlatform::findItemByObjectName(const QString& objectName, 
 
     if (checkMatch(objectName, parentItem->objectName()))
     {
-        return parentItem;
+        items.append(parentItem);
     }
 
-    QList<QObject*> childItems = childrenList(parentItem);
-    for (QObject* child : childItems)
+    for (QObject* child : childrenList(parentItem))
     {
-        QObject* item = findItemByObjectName(objectName, child);
-        if (item)
-        {
-            return item;
-        }
+        QObjectList recursiveItems = findItemsByObjectName(objectName, child);
+        items.append(recursiveItems);
     }
-    return nullptr;
+    return items;
 }
 
 QObjectList GenericEnginePlatform::findItemsByClassName(const QString& className,
@@ -1589,9 +1589,9 @@ void GenericEnginePlatform::findStrategy_objectName(ITransportClient* socket,
                                                     bool multiple,
                                                     QObject* parentItem)
 {
-    QObject* item = findItemByObjectName(selector, parentItem);
-    qCDebug(categoryGenericEnginePlatform) << Q_FUNC_INFO << selector << multiple << item;
-    elementReply(socket, {item}, multiple);
+    QObjectList items = findItemsByObjectName(selector, parentItem);
+    qCDebug(categoryGenericEnginePlatform) << Q_FUNC_INFO << selector << multiple << items;
+    elementReply(socket, items, multiple);
 }
 
 void GenericEnginePlatform::findStrategy_classname(ITransportClient* socket,
