@@ -273,6 +273,105 @@ QAPendingEvent* QAMouseEngine::performTouchAction(const QVariantList& actions)
     return event;
 }
 
+void QAMouseEngine::performChainActions(const QVariantList& actions)
+{
+    QPointF previousPoint;
+
+    const auto actionsList = actions.first().toMap().value(QStringLiteral("actions")).toList();
+    for (const QVariant& actionVar : actionsList)
+    {
+        const QVariantMap action = actionVar.toMap();
+        QMouseEvent::Type eventType = QMouseEvent::None;
+        const QString type = action.value(QStringLiteral("type")).toString();
+        if (type == QLatin1String("pause"))
+        {
+            const int duration = action.value(QStringLiteral("duration"), "0").toInt();
+            if (duration <= 0)
+            {
+                continue;
+            }
+
+            QEventLoop loop;
+            QTimer::singleShot(duration, &loop, &QEventLoop::quit);
+            loop.exec();
+        }
+        else if (type == QLatin1String("pointerMove"))
+        {
+            const int posX = action.value(QStringLiteral("x")).toInt();
+            const int posY = action.value(QStringLiteral("y")).toInt();
+
+            if (!previousPoint.isNull())
+            {
+                QPointF point(posX, posY);
+
+                QVariantList action = {
+                    QVariantMap{
+                        {"action", "moveTo"},
+                        {
+                            "options",
+                            QVariantMap{
+                                {"x", posX},
+                                {"y", posY},
+                                {"duration", 200},
+                                {"steps", 20},
+                            },
+                        },
+                    },
+                };
+
+                performTouchAction(action);
+            }
+
+            previousPoint = QPointF(posX, posY);
+        }
+        else if (type == QLatin1String("pointerDown"))
+        {
+            QVariantList action = {
+                QVariantMap{
+                    {"action", "press"},
+                    {
+                        "options",
+                        QVariantMap{
+                            {"x", previousPoint.x()},
+                            {"y", previousPoint.y()},
+                        },
+                    },
+                },
+                QVariantMap{
+                    {"action", "wait"},
+                    {
+                        "options",
+                        QVariantMap{
+                            {"ms", 200},
+                        },
+                    },
+                },
+            };
+
+            performTouchAction(action);
+        }
+        else if (type == QLatin1String("pointerUp"))
+        {
+            QVariantList action = {
+                QVariantMap{
+                    {"action", "release"},
+                    {
+                        "options",
+                        QVariantMap{
+                            {"x", previousPoint.x()},
+                            {"y", previousPoint.y()},
+                        },
+                    },
+                },
+            };
+
+            performTouchAction(action);
+
+            previousPoint = QPointF();
+        }
+    }
+}
+
 int QAMouseEngine::getNextPointId()
 {
     return ++m_tpId;
@@ -520,7 +619,14 @@ void EventWorker::start()
         }
         else if (action == QLatin1String("release"))
         {
-            sendRelease(previousPoint);
+            QPointF point = previousPoint;
+            if (options.contains(QStringLiteral("x")) && options.contains(QStringLiteral("y")))
+            {
+                const int posX = options.value(QStringLiteral("x")).toInt();
+                const int posY = options.value(QStringLiteral("y")).toInt();
+                point = QPointF(posX, posY);
+            }
+            sendRelease(point);
         }
         else if (action == QLatin1String("tap"))
         {

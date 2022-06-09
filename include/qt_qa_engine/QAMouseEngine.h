@@ -43,6 +43,8 @@ public:
     QAPendingEvent* performMultiAction(const QVariantList& multiActions);
     QAPendingEvent* performTouchAction(const QVariantList& actions);
 
+    void performChainActions(const QVariantList& actions);
+
     int getNextPointId();
     qint64 getEta();
     QTouchDevice* getTouchDevice();
