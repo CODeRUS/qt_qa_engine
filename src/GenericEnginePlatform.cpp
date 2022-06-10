@@ -862,9 +862,11 @@ void GenericEnginePlatform::onPropertyChanged()
 
 void GenericEnginePlatform::onTouchEvent(const QTouchEvent& event)
 {
+#if (!defined(MO_OS_ANDROID) && !defined(MO_OS_IOS))
     m_rootWindow->raise();
     m_rootWindow->requestActivate();
     m_rootWindow->setWindowState(Qt::WindowState::WindowActive);
+#endif
 
     QWindowSystemInterface::handleTouchEvent(
         m_rootWindow,
@@ -875,12 +877,11 @@ void GenericEnginePlatform::onTouchEvent(const QTouchEvent& event)
 
 void GenericEnginePlatform::onMouseEvent(const QMouseEvent& event)
 {
-    qDebug() << Q_FUNC_INFO << event.type() << event.buttons() << event.button()
-             << event.localPos();
-
+#if (!defined(MO_OS_ANDROID) && !defined(MO_OS_IOS))
     m_rootWindow->raise();
     m_rootWindow->requestActivate();
     m_rootWindow->setWindowState(Qt::WindowState::WindowActive);
+#endif
 
     QWindowSystemInterface::handleMouseEvent(m_rootWindow,
                                              event.timestamp(),
