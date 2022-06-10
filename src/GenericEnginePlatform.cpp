@@ -845,12 +845,12 @@ void GenericEnginePlatform::onPropertyChanged()
     const QVariant propertyValue = item->property("WaitForPropertyChangePropertyValue");
     if (!propertyValue.isValid())
     {
-        loop->exit(1);
+        loop->quit();
         return;
     }
     if (propertyValue.canConvert<std::nullptr_t>())
     {
-        loop->exit(1);
+        loop->quit();
         return;
     }
     const QVariant property = item->property(propertyName.toLatin1().constData());
@@ -1703,7 +1703,7 @@ void GenericEnginePlatform::executeCommand_app_waitForPropertyChange(ITransportC
     if (item)
     {
         bool result = waitForPropertyChange(item, propertyName, value, timeout);
-        socketReply(socket, QString(), result ? 0 : 1);
+        socketReply(socket, result);
     }
     else
     {
