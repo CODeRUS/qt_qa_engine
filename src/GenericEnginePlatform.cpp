@@ -760,7 +760,9 @@ bool GenericEnginePlatform::waitForPropertyChange(QObject* item,
         return false;
     }
     const QMetaProperty prop = item->metaObject()->property(propertyIndex);
-    if (prop.read(item) == value)
+    const auto propValue = prop.read(item);
+    bool isNullptr = value.canConvert<std::nullptr_t>();
+    if (value.isValid() && !isNullptr && propValue == value)
     {
         return false;
     }
@@ -844,6 +846,12 @@ void GenericEnginePlatform::onPropertyChanged()
     if (!propertyValue.isValid())
     {
         loop->exit(1);
+        return;
+    }
+    if (propertyValue.canConvert<std::nullptr_t>())
+    {
+        loop->exit(1);
+        return;
     }
     const QVariant property = item->property(propertyName.toLatin1().constData());
     if (property == propertyValue)
