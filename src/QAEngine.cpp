@@ -217,7 +217,7 @@ void QAEngine::onPlatformReady()
 
 void QAEngine::clientLost(ITransportClient* client)
 {
-    qDebug() << Q_FUNC_INFO << client;
+    qCDebug(categoryEngine) << Q_FUNC_INFO << client;
 }
 
 QAEngine* QAEngine::instance()

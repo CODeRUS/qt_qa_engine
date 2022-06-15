@@ -86,5 +86,5 @@ void QAEngineSocketClient::onConnected()
     auto available = m_client->bytesAvailable();
     qCDebug(categorySocketClient) << Q_FUNC_INFO << m_client << available;
 
-    qDebug().noquote() << m_client->readAll();
+    qCDebug(categorySocketClient).noquote() << m_client->readAll();
 }

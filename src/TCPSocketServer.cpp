@@ -8,6 +8,10 @@
 
 #include <QDebug>
 
+#include <QLoggingCategory>
+
+Q_LOGGING_CATEGORY(categoryTCPSocketServer, "autoqa.qaengine.transport.server", QtWarningMsg)
+
 TCPSocketServer::TCPSocketServer(quint16 port, QObject* parent)
     : ITransportServer(parent)
     , m_port(port)
@@ -18,21 +22,25 @@ TCPSocketServer::TCPSocketServer(quint16 port, QObject* parent)
 
 void TCPSocketServer::start()
 {
-    qDebug() << Q_FUNC_INFO;
+    qCDebug(categoryTCPSocketServer) << Q_FUNC_INFO;
 
     if (!m_server->listen(QHostAddress::AnyIPv4, m_port))
     {
-        qWarning() << Q_FUNC_INFO << m_server->errorString();
+        qCWarning(categoryTCPSocketServer) << Q_FUNC_INFO << m_server->errorString();
         qApp->quit();
         return;
+    }
+    else
+    {
+        qCWarning(categoryTCPSocketServer) << Q_FUNC_INFO << "listening:" << m_port;
     }
 }
 
 void TCPSocketServer::newConnection()
 {
     auto socket = m_server->nextPendingConnection();
-    qDebug() << Q_FUNC_INFO << "New connection from:" << socket->peerAddress()
-             << socket->peerPort();
+    qCDebug(categoryTCPSocketServer)
+        << Q_FUNC_INFO << "New connection from:" << socket->peerAddress() << socket->peerPort();
     auto client = new TCPSocketClient(socket);
     registerClient(client);
 }

@@ -6,6 +6,10 @@
 #include <QJsonDocument>
 #include <QJsonParseError>
 
+#include <QLoggingCategory>
+
+Q_LOGGING_CATEGORY(categoryITransportServer, "autoqa.qaengine.transport.interface", QtWarningMsg)
+
 ITransportServer::ITransportServer(QObject* parent)
     : QObject(parent)
 {
@@ -20,16 +24,16 @@ void ITransportServer::registerClient(ITransportClient* client)
 void ITransportServer::readData(ITransportClient* client)
 {
     auto bytes = client->bytesAvailable();
-    qDebug() << Q_FUNC_INFO << client << bytes;
+    qCDebug(categoryITransportServer) << Q_FUNC_INFO << client << bytes;
 
     static QByteArray requestData;
     requestData.append(client->readAll());
-    qDebug().noquote() << requestData;
+    qCDebug(categoryITransportServer).noquote() << requestData;
 
     requestData.replace("}{", "}\n{"); // workaround packets join
 
     const QList<QByteArray> commands = requestData.split('\n');
-    qDebug() << Q_FUNC_INFO << "Commands count:" << commands.length();
+    qCDebug(categoryITransportServer) << Q_FUNC_INFO << "Commands count:" << commands.length();
 
     requestData.clear();
     for (const QByteArray& cmd : commands)
@@ -38,15 +42,15 @@ void ITransportServer::readData(ITransportClient* client)
         {
             continue;
         }
-        qDebug() << Q_FUNC_INFO << "Command:";
-        qDebug().noquote() << cmd;
+        qCDebug(categoryITransportServer) << Q_FUNC_INFO << "Command:";
+        qCDebug(categoryITransportServer).noquote() << cmd;
 
         QJsonParseError error;
         QJsonDocument::fromJson(cmd, &error);
         if (error.error != QJsonParseError::NoError)
         {
-            qDebug() << Q_FUNC_INFO << "Partial data, waiting for more";
-            qDebug().noquote() << error.errorString();
+            qCDebug(categoryITransportServer) << Q_FUNC_INFO << "Partial data, waiting for more";
+            qCDebug(categoryITransportServer).noquote() << error.errorString();
 
             requestData = cmd;
             break;
