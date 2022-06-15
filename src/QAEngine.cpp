@@ -236,7 +236,8 @@ QAEngine::QAEngine(QObject* parent)
     qRegisterMetaType<QTcpSocket*>();
     qRegisterMetaType<ITransportClient*>();
     qRegisterMetaType<ITransportServer*>();
-    QLoggingCategory::setFilterRules("autoqa.qaengine.*.debug=true");
+    QLoggingCategory::setFilterRules("autoqa.qaengine.*.debug=false\n"
+                                     "autoqa.qaengine.transport.server.debug=true");
 
     connect(m_socketServer, &ITransportServer::commandReceived, this, &QAEngine::processCommand);
     connect(m_socketServer, &ITransportServer::clientLost, this, &QAEngine::clientLost);
