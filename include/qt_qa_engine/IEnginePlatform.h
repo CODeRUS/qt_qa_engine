@@ -42,7 +42,7 @@ public slots:
 private slots:
     virtual void appConnectCommand(ITransportClient* client) = 0;
     virtual void appDisconnectCommand(ITransportClient* client) = 0;
-    virtual void initializeCommand(ITransportClient* client, const QString& appName) = 0;
+    virtual void initializeCommand(ITransportClient* client) = 0;
     virtual void activateAppCommand(ITransportClient* socket, const QString& appName) = 0;
     virtual void closeAppCommand(ITransportClient* socket, const QString& appName) = 0;
     virtual void queryAppStateCommand(ITransportClient* socket, const QString& appName) = 0;

@@ -922,9 +922,9 @@ void GenericEnginePlatform::appDisconnectCommand(ITransportClient* socket)
     socketReply(socket, QString());
 }
 
-void GenericEnginePlatform::initializeCommand(ITransportClient* socket, const QString& appName)
+void GenericEnginePlatform::initializeCommand(ITransportClient* socket)
 {
-    qDebug() << Q_FUNC_INFO << socket << appName;
+    qDebug() << Q_FUNC_INFO << socket;
 }
 
 void GenericEnginePlatform::activateAppCommand(ITransportClient* socket, const QString& appName)

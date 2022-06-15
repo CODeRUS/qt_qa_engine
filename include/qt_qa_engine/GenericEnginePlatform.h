@@ -117,7 +117,7 @@ private slots:
     virtual void appConnectCommand(ITransportClient* socket) override;
     virtual void appDisconnectCommand(ITransportClient* socket) override;
 
-    virtual void initializeCommand(ITransportClient* socket, const QString& appName) override;
+    virtual void initializeCommand(ITransportClient* socket) override;
     virtual void activateAppCommand(ITransportClient* socket, const QString& appName) override;
     virtual void closeAppCommand(ITransportClient* socket, const QString& appName) override;
     virtual void queryAppStateCommand(ITransportClient* socket, const QString& appName) override;
