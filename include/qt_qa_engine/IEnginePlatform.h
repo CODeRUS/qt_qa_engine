@@ -90,6 +90,9 @@ private slots:
     virtual void setValueCommand(ITransportClient* socket,
                                  const QVariantList& value,
                                  const QString& elementId) = 0;
+    virtual void setValueCommand(ITransportClient* socket,
+                                 const QString& value,
+                                 const QString& elementId) = 0;
     virtual void clickCommand(ITransportClient* socket, const QString& elementId) = 0;
     virtual void clearCommand(ITransportClient* socket, const QString& elementId) = 0;
     virtual void submitCommand(ITransportClient* socket, const QString& elementId) = 0;

@@ -1324,6 +1324,15 @@ void GenericEnginePlatform::setValueCommand(ITransportClient* socket,
     setValueImmediateCommand(socket, value, elementId);
 }
 
+void GenericEnginePlatform::setValueCommand(ITransportClient* socket,
+                                            const QString& value,
+                                            const QString& elementId)
+{
+    qCDebug(categoryGenericEnginePlatform) << Q_FUNC_INFO << socket << value << elementId;
+
+    setProperty(socket, QStringLiteral("text"), value, elementId);
+}
+
 void GenericEnginePlatform::clickCommand(ITransportClient* socket, const QString& elementId)
 {
     qCDebug(categoryGenericEnginePlatform) << Q_FUNC_INFO << socket << elementId;
