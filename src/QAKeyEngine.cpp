@@ -12,6 +12,11 @@ namespace
 
 int seleniumKeyToQt(ushort key)
 {
+    if (key >= 'A' && key <= 'Z')
+    {
+        return key;
+    }
+
     if (key < 0xe000 || key > 0xe03d)
     {
         return 0;
@@ -158,22 +163,27 @@ void QAKeyEngine::performChainActions(const QVariantList& actions)
             if (key == Qt::Key_Control)
             {
                 mods ^= Qt::ControlModifier;
+                continue;
             }
             else if (key == Qt::Key_Alt)
             {
                 mods ^= Qt::AltModifier;
+                continue;
             }
             else if (key == Qt::Key_Shift)
             {
                 mods ^= Qt::ShiftModifier;
+                continue;
             }
             else if (key == Qt::Key_Meta)
             {
                 mods ^= Qt::MetaModifier;
+                continue;
             }
             else if (key >= Qt::Key_0 && key <= Qt::Key_9)
             {
                 mods ^= Qt::KeypadModifier;
+                continue;
             }
         }
         if (keyUp)
