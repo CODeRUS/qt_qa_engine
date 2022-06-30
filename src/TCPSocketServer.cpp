@@ -23,6 +23,10 @@ TCPSocketServer::TCPSocketServer(quint16 port, QObject* parent)
 void TCPSocketServer::start()
 {
     qCDebug(categoryTCPSocketServer) << Q_FUNC_INFO;
+    if (m_server->isListening())
+    {
+        return;
+    }
 
     if (!m_server->listen(QHostAddress::AnyIPv4, m_port))
     {
