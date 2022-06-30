@@ -1720,3 +1720,11 @@ void GenericEnginePlatform::executeCommand_app_waitForPropertyChange(ITransportC
         socketReply(socket, QString(), 1);
     }
 }
+
+void GenericEnginePlatform::executeCommand_app_setLoggingFilter(ITransportClient* socket,
+                                                                const QString& rules)
+{
+    QLoggingCategory::setFilterRules(rules);
+
+    socketReply(socket, QString());
+}
