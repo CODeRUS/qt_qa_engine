@@ -281,7 +281,6 @@ void QAMouseEngine::performChainActions(const QVariantList& actions)
     for (const QVariant& actionVar : actionsList)
     {
         const QVariantMap action = actionVar.toMap();
-        QMouseEvent::Type eventType = QMouseEvent::None;
         const QString type = action.value(QStringLiteral("type")).toString();
         if (type == QLatin1String("pause"))
         {
@@ -297,8 +296,21 @@ void QAMouseEngine::performChainActions(const QVariantList& actions)
         }
         else if (type == QLatin1String("pointerMove"))
         {
-            const int posX = action.value(QStringLiteral("x")).toInt();
-            const int posY = action.value(QStringLiteral("y")).toInt();
+            int posX = action.value(QStringLiteral("x")).toInt();
+            int posY = action.value(QStringLiteral("y")).toInt();
+
+            if (action.contains(QStringLiteral("origin")))
+            {
+
+                auto platform = QAEngine::instance()->getPlatform();
+                if (auto item =
+                        platform->getObject(action.value(QStringLiteral("origin")).toString()))
+                {
+                    const auto point = platform->getAbsGeometry(item).center();
+                    posX = point.x();
+                    posY = point.y();
+                }
+            }
 
             if (!previousPoint.isNull())
             {
