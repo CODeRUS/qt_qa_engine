@@ -41,9 +41,6 @@ protected:
     QWidget* m_rootWidget = nullptr;
 
 private slots:
-    // IEnginePlatform interface
-    virtual void getPageSourceCommand(ITransportClient* socket) override;
-
     // execute_%1 methods
     void executeCommand_app_dumpInView(ITransportClient* socket, const QString& elementId);
     void executeCommand_app_posInView(ITransportClient* socket,

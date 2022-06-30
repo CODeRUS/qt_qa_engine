@@ -125,15 +125,6 @@ void WidgetsEnginePlatform::initialize()
     emit ready();
 }
 
-void WidgetsEnginePlatform::getPageSourceCommand(ITransportClient* socket)
-{
-    qCDebug(categoryWidgetsEnginePlatform) << Q_FUNC_INFO << socket;
-
-    // TODO
-
-    socketReply(socket, QString());
-}
-
 void WidgetsEnginePlatform::executeCommand_app_dumpInView(ITransportClient* socket,
                                                           const QString& elementId)
 {
