@@ -21,9 +21,20 @@ android {
 }
 
 # TODO: uncomment xmlpatterns after KDM-1227 resolved
-QT += qml core network quick quick-private core-private #xmlpatterns
+QT += core core-private network
 CONFIG += plugin
 CONFIG += c++11
+
+contains(DEFINES, MO_USE_QXMLPATTERNS) {
+    QT += xmlpatterns
+}
+
+contains(DEFINES, MO_USE_QUICK) {
+    QT += qml quick quick-private
+
+    SOURCES += src/QuickEnginePlatform.cpp
+    HEADERS += include/qt_qa_engine/QuickEnginePlatform.h
+}
 
 contains(DEFINES, MO_USE_QWIDGETS) {
     QT += widgets widgets-private
@@ -42,7 +53,6 @@ SOURCES += \
     src/QAKeyEngine.cpp \
     src/QAMouseEngine.cpp \
     src/QAPendingEvent.cpp \
-    src/QuickEnginePlatform.cpp \
     src/TCPSocketClient.cpp \
     src/TCPSocketServer.cpp \
     src/loader.cpp
@@ -57,7 +67,6 @@ HEADERS += \
     include/qt_qa_engine/QAKeyEngine.h \
     include/qt_qa_engine/QAMouseEngine.h \
     include/qt_qa_engine/QAPendingEvent.h \
-    include/qt_qa_engine/QuickEnginePlatform.h \
     include/qt_qa_engine/TCPSocketClient.h \
     include/qt_qa_engine/TCPSocketServer.h
 

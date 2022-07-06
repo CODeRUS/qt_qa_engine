@@ -284,54 +284,59 @@ QObjectList GenericEnginePlatform::findItemsByXpath(const QString& xpath, QObjec
 {
     qCDebug(categoryGenericEnginePlatform) << Q_FUNC_INFO << xpath << parentItem;
 
+#if defined(MO_USE_QXMLPATTERNS)
+    if (!parentItem)
+    {
+        parentItem = m_rootObject;
+    }
+
+    QString out;
+    QXmlStreamWriter writer(&out);
+    writer.setAutoFormatting(true);
+    writer.writeStartDocument();
+    recursiveDumpXml(&writer, parentItem, 0);
+    writer.writeEndDocument();
+
+    QXmlQuery query;
+    query.setFocus(out);
+    query.setQuery(xpath);
+
+    if (!query.isValid())
+    {
+        qCWarning(categoryGenericEnginePlatform) << Q_FUNC_INFO << "Query not valid:" << xpath;
+        return items;
+    }
+    QString tempString;
+    query.evaluateTo(&tempString);
+
+    if (tempString.trimmed().isEmpty())
+    {
+        return items;
+    }
+
+    const QString resultData =
+        QLatin1String("<results>") + tempString + QLatin1String("</results>");
+    QXmlStreamReader reader(resultData);
+    reader.readNextStartElement();
+    while (!reader.atEnd())
+    {
+        reader.readNext();
+        if (reader.isStartElement())
+        {
+            const QString elementId = reader.attributes().value(QStringLiteral("id")).toString();
+            const QString address = elementId.section(QChar(u'x'), -1);
+            const qulonglong integer = address.toULongLong(NULL, 16);
+            QObject* item = reinterpret_cast<QObject*>(integer);
+            items.append(item);
+            reader.skipCurrentElement();
+        }
+    }
+
+    return items;
+#else
     QObjectList items;
     return items;
-
-    //    if (!parentItem) {
-    //        parentItem = m_rootObject;
-    //    }
-
-    //    QString out;
-    //    QXmlStreamWriter writer(&out);
-    //    writer.setAutoFormatting(true);
-    //    writer.writeStartDocument();
-    //    recursiveDumpXml(&writer, parentItem, 0);
-    //    writer.writeEndDocument();
-
-    //    QXmlQuery query;
-    //    query.setFocus(out);
-    //    query.setQuery(xpath);
-
-    //    if (!query.isValid()) {
-    //        qCWarning(categoryGenericEnginePlatform)
-    //            << Q_FUNC_INFO
-    //            << "Query not valid:"
-    //            << xpath;
-    //        return items;
-    //    }
-    //    QString tempString;
-    //    query.evaluateTo(&tempString);
-
-    //    if (tempString.trimmed().isEmpty()) {
-    //        return items;
-    //    }
-
-    //    const QString resultData = QLatin1String("<results>") + tempString +
-    //    QLatin1String("</results>"); QXmlStreamReader reader(resultData);
-    //    reader.readNextStartElement();
-    //    while (!reader.atEnd()) {
-    //        reader.readNext();
-    //        if (reader.isStartElement()) {
-    //            const QString elementId =
-    //            reader.attributes().value(QStringLiteral("id")).toString(); const QString address
-    //            = elementId.section(QChar(u'x'), -1); const qulonglong integer =
-    //            address.toULongLong(NULL, 16); QObject *item =
-    //            reinterpret_cast<QObject*>(integer); items.append(item);
-    //            reader.skipCurrentElement();
-    //        }
-    //    }
-
-    //    return items;
+#endif
 }
 
 QObjectList GenericEnginePlatform::filterVisibleItems(QObjectList items)
