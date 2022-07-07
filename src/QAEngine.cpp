@@ -242,6 +242,7 @@ QAEngine::QAEngine(QObject* parent)
     QLoggingCategory::setFilterRules("autoqa.qaengine.*.debug=false\n"
                                      "autoqa.qaengine.transport.server.debug=true");
 
+    connect(m_socketServer, &ITransportServer::commandReceived, this, &QAEngine::initializeEngine);
     connect(m_socketServer, &ITransportServer::commandReceived, this, &QAEngine::processCommand);
     connect(m_socketServer, &ITransportServer::clientLost, this, &QAEngine::clientLost);
 }
