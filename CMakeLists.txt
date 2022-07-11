@@ -73,12 +73,6 @@ if (MO_USE_QUICK)
     list(APPEND ${PROJECT_NAME}_SOURCES src/QuickEnginePlatform.cpp)
 
     qt5_add_resources(QRC_RESOURCES qml/qtqaengine.qrc)
-
-    add_library (${PROJECT_NAME}
-        ${QRC_RESOURCES}
-        ${${PROJECT_NAME}_SOURCES}
-        ${${PROJECT_NAME}_HEADERS}
-    )
 endif()
 
 # Find widgets module
@@ -93,6 +87,12 @@ if (MO_USE_QWIDGETS)
     list(APPEND ${PROJECT_NAME}_HEADERS include/qt_qa_engine/WidgetsEnginePlatform.h)
     list(APPEND ${PROJECT_NAME}_SOURCES src/WidgetsEnginePlatform.cpp)
 endif()
+
+add_library (${PROJECT_NAME}
+    ${QRC_RESOURCES}
+    ${${PROJECT_NAME}_SOURCES}
+    ${${PROJECT_NAME}_HEADERS}
+)
 
 # workaround for ios cmake bug with wrong paths in _PRIVATE_INCLUDE_DIRS
 # removing Versions/5/ from its paths
