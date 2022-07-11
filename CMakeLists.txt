@@ -45,27 +45,41 @@ list(APPEND LIBS_INCLUDES ${Qt5Core_INCLUDE_DIRS})
 list(APPEND LIBS_DEFS ${Qt5Core_DEFINITIONS})
 list(APPEND LIBS Qt5::Core)
 
-# Find Qt5 Quick module
-find_package(Qt5 ${CURRENT_QT_VERSION} COMPONENTS Quick REQUIRED)
-list(APPEND LIBS_INCLUDES ${Qt5Quick_INCLUDE_DIRS})
-list(APPEND LIBS_INCLUDES ${Qt5Quick_PRIVATE_INCLUDE_DIRS})
-list(APPEND LIBS_DEFS ${Qt5Quick_DEFINITIONS})
-list(APPEND LIBS Qt5::Quick)
 
-# Find Qt5 Gui module
-# For uiapplication.h
-find_package(Qt5 ${CURRENT_QT_VERSION} COMPONENTS Gui REQUIRED)
-list(APPEND LIBS_INCLUDES ${Qt5Gui_INCLUDE_DIRS})
-list(APPEND LIBS_INCLUDES ${Qt5Gui_PRIVATE_INCLUDE_DIRS})
-list(APPEND LIBS_DEFS ${Qt5Gui_DEFINITIONS})
-list(APPEND LIBS Qt5::Gui)
+if (MO_USE_QUICK)
+    # Find Qt5 Quick module
+    find_package(Qt5 ${CURRENT_QT_VERSION} COMPONENTS Quick REQUIRED)
+    list(APPEND LIBS_INCLUDES ${Qt5Quick_INCLUDE_DIRS})
+    list(APPEND LIBS_INCLUDES ${Qt5Quick_PRIVATE_INCLUDE_DIRS})
+    list(APPEND LIBS_DEFS ${Qt5Quick_DEFINITIONS})
+    list(APPEND LIBS Qt5::Quick)
 
-# Find Qt5 Qml module
-# For uiengine.h
-find_package(Qt5 ${CURRENT_QT_VERSION} COMPONENTS Qml REQUIRED)
-list(APPEND LIBS_INCLUDES ${Qt5Qml_INCLUDE_DIRS})
-list(APPEND LIBS_DEFS ${Qt5Qml_DEFINITIONS})
-list(APPEND LIBS Qt5::Qml)
+    # Find Qt5 Gui module
+    # For uiapplication.h
+    find_package(Qt5 ${CURRENT_QT_VERSION} COMPONENTS Gui REQUIRED)
+    list(APPEND LIBS_INCLUDES ${Qt5Gui_INCLUDE_DIRS})
+    list(APPEND LIBS_INCLUDES ${Qt5Gui_PRIVATE_INCLUDE_DIRS})
+    list(APPEND LIBS_DEFS ${Qt5Gui_DEFINITIONS})
+    list(APPEND LIBS Qt5::Gui)
+
+    # Find Qt5 Qml module
+    # For uiengine.h
+    find_package(Qt5 ${CURRENT_QT_VERSION} COMPONENTS Qml REQUIRED)
+    list(APPEND LIBS_INCLUDES ${Qt5Qml_INCLUDE_DIRS})
+    list(APPEND LIBS_DEFS ${Qt5Qml_DEFINITIONS})
+    list(APPEND LIBS Qt5::Qml)
+
+    list(APPEND ${PROJECT_NAME}_HEADERS include/qt_qa_engine/QuickEnginePlatform.h)
+    list(APPEND ${PROJECT_NAME}_SOURCES src/QuickEnginePlatform.cpp)
+
+    qt5_add_resources(QRC_RESOURCES qml/qtqaengine.qrc)
+
+    add_library (${PROJECT_NAME}
+        ${QRC_RESOURCES}
+        ${${PROJECT_NAME}_SOURCES}
+        ${${PROJECT_NAME}_HEADERS}
+    )
+endif()
 
 # Find widgets module
 if (MO_USE_QWIDGETS)
@@ -100,7 +114,6 @@ list(APPEND
     include/qt_qa_engine/GenericEnginePlatform.h
     include/qt_qa_engine/ITransportServer.h
     include/qt_qa_engine/QAKeyEngine.h
-    include/qt_qa_engine/QuickEnginePlatform.h
     include/qt_qa_engine/IEnginePlatform.h
     include/qt_qa_engine/QAEngine.h
     include/qt_qa_engine/QAMouseEngine.h
@@ -118,21 +131,12 @@ list(APPEND
     src/QAPendingEvent.cpp
     src/IEnginePlatform.cpp
     src/QAEngineSocketClient.cpp
-    src/QuickEnginePlatform.cpp
     src/ITransportClient.cpp
     src/QAKeyEngine.cpp
     src/TCPSocketClient.cpp
     src/ITransportServer.cpp
     src/QAMouseEngine.cpp
     src/TCPSocketServer.cpp
-)
-
-qt5_add_resources(QRC_RESOURCES qml/qtqaengine.qrc)
-
-add_library (${PROJECT_NAME}
-    ${QRC_RESOURCES}
-    ${${PROJECT_NAME}_SOURCES}
-    ${${PROJECT_NAME}_HEADERS}
 )
 
 # > Generated moc_*.cpp and *.moc files are placed in the build directory
