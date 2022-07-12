@@ -92,6 +92,16 @@ if (MO_USE_QWIDGETS)
     list(APPEND ${PROJECT_NAME}_SOURCES src/WidgetsEnginePlatform.cpp)
 endif()
 
+if (MO_USE_QXMLPATTERNS)
+    # Find xml module
+    add_definitions(-DMO_USE_QXMLPATTERNS)
+
+    find_package(Qt5 ${CURRENT_QT_VERSION} COMPONENTS XmlPatterns REQUIRED)
+    list(APPEND LIBS_INCLUDES ${Qt5XmlPatterns_INCLUDE_DIRS})
+    list(APPEND LIBS_DEFS ${Qt5XmlPatterns_DEFINITIONS})
+    list(APPEND LIBS Qt5::XmlPatterns)
+endif()
+
 # workaround for ios cmake bug with wrong paths in _PRIVATE_INCLUDE_DIRS
 # removing Versions/5/ from its paths
 foreach(di ${LIBS_INCLUDES})
