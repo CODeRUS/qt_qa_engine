@@ -269,4 +269,5 @@ private slots:
                                                   const QVariant& value,
                                                   qlonglong timeout = 3000);
     void executeCommand_app_setLoggingFilter(ITransportClient* socket, const QString& rules);
+    void executeCommand_app_installFileLogger(ITransportClient* socket, const QString& filePath);
 };

@@ -8,12 +8,15 @@
 
 #include <QClipboard>
 #include <QDebug>
+#include <QDir>
+#include <QFileInfo>
 #include <QGuiApplication>
 #include <QJsonArray>
 #include <QJsonDocument>
 #include <QJsonObject>
 #include <QJsonValue>
 #include <QMetaMethod>
+#include <QStandardPaths>
 #include <QTimer>
 #include <QXmlStreamWriter>
 //#include <QXmlQuery>
@@ -1803,5 +1806,68 @@ void GenericEnginePlatform::executeCommand_app_setLoggingFilter(ITransportClient
 {
     QLoggingCategory::setFilterRules(rules);
 
+    socketReply(socket, QString());
+}
+
+static QString fileLoggerPath;
+
+void fileHandler(QtMsgType type, const QMessageLogContext &, const QString & msg)
+{
+    static QFile outFile;
+    if (!outFile.isOpen())
+    {
+        if (fileLoggerPath.isEmpty())
+        {
+            QDir d(QStandardPaths::writableLocation(QStandardPaths::TempLocation));
+            if (!d.exists())
+            {
+                d.mkpath(d.absolutePath());
+            }
+            auto appDir = QFileInfo(qApp->applicationFilePath()).fileName();
+            d.mkdir(appDir);
+            d.cd(appDir);
+            fileLoggerPath = d.absoluteFilePath("app_log.txt");
+        }
+        outFile.setFileName(fileLoggerPath);
+        outFile.open(QIODevice::WriteOnly | QIODevice::Append);
+    }
+    static QTextStream ts(&outFile);
+
+    QString txt;
+    switch (type)
+    {
+        case QtDebugMsg:
+            txt = QString("Debug: %1").arg(msg);
+            break;
+        case QtWarningMsg:
+            txt = QString("Warning: %1").arg(msg);
+            break;
+        case QtCriticalMsg:
+            txt = QString("Critical: %1").arg(msg);
+            break;
+        case QtFatalMsg:
+            txt = QString("Fatal: %1").arg(msg);
+            break;
+        case QtInfoMsg:
+            txt = QString("Info: %1").arg(msg);
+            break;
+    }
+    ts << txt << endl;
+    outFile.flush();
+    if (type == QtFatalMsg)
+    {
+        abort();
+    }
+}
+
+void GenericEnginePlatform::executeCommand_app_installFileLogger(ITransportClient *socket, const QString &filePath)
+{
+    static bool fileLoggerInstalled = false;
+    if (!fileLoggerInstalled)
+    {
+        fileLoggerPath = filePath;
+        qInstallMessageHandler(fileHandler);
+        fileLoggerInstalled = true;
+    }
     socketReply(socket, QString());
 }
