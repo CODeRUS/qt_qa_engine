@@ -45,6 +45,12 @@ list(APPEND LIBS_INCLUDES ${Qt5Core_INCLUDE_DIRS})
 list(APPEND LIBS_DEFS ${Qt5Core_DEFINITIONS})
 list(APPEND LIBS Qt5::Core)
 
+# Find Qt5 Network module
+find_package(Qt5 ${CURRENT_QT_VERSION} COMPONENTS Network REQUIRED)
+list(APPEND LIBS_INCLUDES ${Qt5Network_INCLUDE_DIRS})
+list(APPEND LIBS_DEFS ${Qt5Network_DEFINITIONS})
+list(APPEND LIBS Qt5::Network)
+
 
 if (MO_USE_QUICK)
     # Find Qt5 Quick module
@@ -55,7 +61,6 @@ if (MO_USE_QUICK)
     list(APPEND LIBS Qt5::Quick)
 
     # Find Qt5 Gui module
-    # For uiapplication.h
     find_package(Qt5 ${CURRENT_QT_VERSION} COMPONENTS Gui REQUIRED)
     list(APPEND LIBS_INCLUDES ${Qt5Gui_INCLUDE_DIRS})
     list(APPEND LIBS_INCLUDES ${Qt5Gui_PRIVATE_INCLUDE_DIRS})
@@ -63,7 +68,6 @@ if (MO_USE_QUICK)
     list(APPEND LIBS Qt5::Gui)
 
     # Find Qt5 Qml module
-    # For uiengine.h
     find_package(Qt5 ${CURRENT_QT_VERSION} COMPONENTS Qml REQUIRED)
     list(APPEND LIBS_INCLUDES ${Qt5Qml_INCLUDE_DIRS})
     list(APPEND LIBS_DEFS ${Qt5Qml_DEFINITIONS})
@@ -75,8 +79,8 @@ if (MO_USE_QUICK)
     qt5_add_resources(QRC_RESOURCES qml/qtqaengine.qrc)
 endif()
 
-# Find widgets module
 if (MO_USE_QWIDGETS)
+    # Find widgets module
     add_definitions(-DMO_USE_QWIDGETS)
     find_package(Qt5 ${CURRENT_QT_VERSION} COMPONENTS Widgets REQUIRED)
     list(APPEND LIBS_INCLUDES ${Qt5Widgets_INCLUDE_DIRS})
@@ -87,12 +91,6 @@ if (MO_USE_QWIDGETS)
     list(APPEND ${PROJECT_NAME}_HEADERS include/qt_qa_engine/WidgetsEnginePlatform.h)
     list(APPEND ${PROJECT_NAME}_SOURCES src/WidgetsEnginePlatform.cpp)
 endif()
-
-add_library (${PROJECT_NAME}
-    ${QRC_RESOURCES}
-    ${${PROJECT_NAME}_SOURCES}
-    ${${PROJECT_NAME}_HEADERS}
-)
 
 # workaround for ios cmake bug with wrong paths in _PRIVATE_INCLUDE_DIRS
 # removing Versions/5/ from its paths
@@ -137,11 +135,19 @@ list(APPEND
     src/ITransportServer.cpp
     src/QAMouseEngine.cpp
     src/TCPSocketServer.cpp
+    src/loader.cpp
 )
 
 # > Generated moc_*.cpp and *.moc files are placed in the build directory
 # so it is convenient to set the CMAKE_INCLUDE_CURRENT_DIR variable.
 # @see https://cmake.org/cmake/help/v3.1/manual/cmake-qt.7.html#automoc
+
+add_library (${PROJECT_NAME}
+    SHARED
+    ${QRC_RESOURCES}
+    ${${PROJECT_NAME}_SOURCES}
+    ${${PROJECT_NAME}_HEADERS}
+)
 
 set_target_properties (${PROJECT_NAME} PROPERTIES
     CXX_STANDARD 11
