@@ -63,10 +63,6 @@ private slots:
         ITransportClient* socket, qlonglong posx, qlonglong posy, qlonglong stopx, qlonglong stopy);
     void executeCommand_touch_mouseDrag(
         ITransportClient* socket, qlonglong posx, qlonglong posy, qlonglong stopx, qlonglong stopy);
-    void executeCommand_app_method(ITransportClient* socket,
-                                   const QString& elementId,
-                                   const QString& method,
-                                   const QVariantList& params);
     void executeCommand_app_js(ITransportClient* socket,
                                const QString& elementId,
                                const QString& jsCode);

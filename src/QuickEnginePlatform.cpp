@@ -456,43 +456,6 @@ void QuickEnginePlatform::executeCommand_touch_mouseDrag(
     socketReply(socket, QString());
 }
 
-void QuickEnginePlatform::executeCommand_app_method(ITransportClient* socket,
-                                                    const QString& elementId,
-                                                    const QString& method,
-                                                    const QVariantList& params)
-{
-    qCDebug(categoryQuickEnginePlatform) << Q_FUNC_INFO << socket << elementId << method << params;
-
-    QQuickItem* item = getItem(elementId);
-    if (!item)
-    {
-        socketReply(socket, QString());
-        return;
-    }
-
-    QGenericArgument arguments[10] = {QGenericArgument()};
-    for (int i = 0; i < params.length(); i++)
-    {
-        arguments[i] = Q_ARG(QVariant, params[i]);
-    }
-
-    QVariant reply;
-    QMetaObject::invokeMethod(item,
-                              method.toLatin1().constData(),
-                              Qt::DirectConnection,
-                              Q_RETURN_ARG(QVariant, reply),
-                              arguments[0],
-                              arguments[1],
-                              arguments[2],
-                              arguments[3],
-                              arguments[4],
-                              arguments[5],
-                              arguments[6],
-                              arguments[7],
-                              arguments[8],
-                              arguments[9]);
-    socketReply(socket, reply);
-}
 
 void QuickEnginePlatform::executeCommand_app_js(ITransportClient* socket,
                                                 const QString& elementId,
