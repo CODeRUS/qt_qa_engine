@@ -57,6 +57,25 @@ static bool s_registerPlatform = []()
 QList<QObject*> WidgetsEnginePlatform::childrenList(QObject* parentItem)
 {
     QList<QObject*> result;
+    QWidget *widget = qobject_cast<QWidget*>(parentItem);
+    if (widget)
+    {
+        for (QAction *action : widget->actions())
+        {
+            result.append(action);
+        }
+    }
+    QAction *action = qobject_cast<QAction*>(parentItem);
+    if (action)
+    {
+        if (action->menu())
+        {
+            for (QAction *a : action->menu()->actions())
+            {
+                result.append(a);
+            }
+        }
+    }
     for (QWidget* w : parentItem->findChildren<QWidget*>(QString(), Qt::FindDirectChildrenOnly))
     {
         result.append(w);
