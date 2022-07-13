@@ -361,7 +361,7 @@ void QAEngine::processCommand(ITransportClient* socket, const QByteArray& cmd)
         return;
     }
 
-    QJsonObject object = json.object();
+    auto&& object = json.object();
 
     if (!object.contains(QStringLiteral("cmd")))
     {
@@ -378,10 +378,9 @@ void QAEngine::processCommand(ITransportClient* socket, const QByteArray& cmd)
         return;
     }
 
-    const QString action = object.value(QStringLiteral("action")).toVariant().toString();
-    const QVariantList params = object.value(QStringLiteral("params")).toVariant().toList();
-
-    processAppiumCommand(socket, action, params);
+    processAppiumCommand(socket,
+                         object.value(QStringLiteral("action")).toVariant().toString(),
+                         object.value(QStringLiteral("params")).toVariant().toList());
 }
 
 bool QAEngine::processAppiumCommand(ITransportClient* socket,
