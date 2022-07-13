@@ -46,5 +46,6 @@ INITIALIZER(libConstructor)
                        {
                            QAEngine* engine = QAEngine::instance();
                            QTimer::singleShot(0, engine, &QAEngine::initializeSocket);
+                           QTimer::singleShot(0, engine, &QAEngine::initializeEngine);
                        });
 }
