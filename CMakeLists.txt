@@ -51,21 +51,13 @@ list(APPEND LIBS_INCLUDES ${Qt5Network_INCLUDE_DIRS})
 list(APPEND LIBS_DEFS ${Qt5Network_DEFINITIONS})
 list(APPEND LIBS Qt5::Network)
 
-
-if (MO_USE_QUICK)
-    # Find Qt5 Quick module
-    find_package(Qt5 ${CURRENT_QT_VERSION} COMPONENTS Quick REQUIRED)
+find_package(Qt5 ${CURRENT_QT_VERSION} COMPONENTS Quick)
+if (Qt5Quick_FOUND)
+    add_definitions(-DMO_USE_QUICK)
     list(APPEND LIBS_INCLUDES ${Qt5Quick_INCLUDE_DIRS})
     list(APPEND LIBS_INCLUDES ${Qt5Quick_PRIVATE_INCLUDE_DIRS})
     list(APPEND LIBS_DEFS ${Qt5Quick_DEFINITIONS})
     list(APPEND LIBS Qt5::Quick)
-
-    # Find Qt5 Gui module
-    find_package(Qt5 ${CURRENT_QT_VERSION} COMPONENTS Gui REQUIRED)
-    list(APPEND LIBS_INCLUDES ${Qt5Gui_INCLUDE_DIRS})
-    list(APPEND LIBS_INCLUDES ${Qt5Gui_PRIVATE_INCLUDE_DIRS})
-    list(APPEND LIBS_DEFS ${Qt5Gui_DEFINITIONS})
-    list(APPEND LIBS Qt5::Gui)
 
     # Find Qt5 Qml module
     find_package(Qt5 ${CURRENT_QT_VERSION} COMPONENTS Qml REQUIRED)
@@ -79,10 +71,9 @@ if (MO_USE_QUICK)
     qt5_add_resources(QRC_RESOURCES qml/qtqaengine.qrc)
 endif()
 
-if (MO_USE_QWIDGETS)
-    # Find widgets module
+find_package(Qt5 ${CURRENT_QT_VERSION} COMPONENTS Widgets)
+if (Qt5Widgets_FOUND)
     add_definitions(-DMO_USE_QWIDGETS)
-    find_package(Qt5 ${CURRENT_QT_VERSION} COMPONENTS Widgets REQUIRED)
     list(APPEND LIBS_INCLUDES ${Qt5Widgets_INCLUDE_DIRS})
     list(APPEND LIBS_INCLUDES ${Qt5Widgets_PRIVATE_INCLUDE_DIRS})
     list(APPEND LIBS_DEFS ${Qt5Widgets_DEFINITIONS})
@@ -92,11 +83,10 @@ if (MO_USE_QWIDGETS)
     list(APPEND ${PROJECT_NAME}_SOURCES src/WidgetsEnginePlatform.cpp)
 endif()
 
-if (MO_USE_QXMLPATTERNS)
-    # Find xml module
-    add_definitions(-DMO_USE_QXMLPATTERNS)
 
-    find_package(Qt5 ${CURRENT_QT_VERSION} COMPONENTS XmlPatterns REQUIRED)
+find_package(Qt5 ${CURRENT_QT_VERSION} COMPONENTS XmlPatterns)
+if (Qt5XmlPatterns_FOUND)
+    add_definitions(-DMO_USE_QXMLPATTERNS)
     list(APPEND LIBS_INCLUDES ${Qt5XmlPatterns_INCLUDE_DIRS})
     list(APPEND LIBS_DEFS ${Qt5XmlPatterns_DEFINITIONS})
     list(APPEND LIBS Qt5::XmlPatterns)
@@ -112,10 +102,6 @@ foreach(di ${LIBS_INCLUDES})
         endif()
     endif()
 endforeach()
-
-if (MO_PLATFORM_MOBILE)
-    add_definitions(-DMO_PLATFORM_MOBILE)
-endif()
 
 list(APPEND
     ${PROJECT_NAME}_HEADERS
