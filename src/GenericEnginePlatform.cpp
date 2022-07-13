@@ -1865,10 +1865,6 @@ void fileHandler(QtMsgType type, const QMessageLogContext &, const QString & msg
     }
     ts << txt << endl;
     outFile.flush();
-    if (type == QtFatalMsg)
-    {
-        abort();
-    }
 }
 
 void GenericEnginePlatform::executeCommand_app_installFileLogger(ITransportClient *socket, const QString &filePath)
