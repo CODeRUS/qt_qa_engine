@@ -466,8 +466,14 @@ QJsonObject GenericEnginePlatform::dumpObject(QObject* item, int depth)
     object.insert(QStringLiteral("abs_y"), QJsonValue(abs.y()));
 
     object.insert(QStringLiteral("objectName"), QJsonValue(item->objectName()));
-    object.insert(QStringLiteral("enabled"), QJsonValue(isItemEnabled(item)));
-    object.insert(QStringLiteral("visible"), QJsonValue(isItemVisible(item)));
+    if (!object.contains(QLatin1String("enabled")))
+    {
+        object.insert(QStringLiteral("enabled"), QJsonValue(isItemEnabled(item)));
+    }
+    if (!object.contains(QLatin1String("visible")))
+    {
+        object.insert(QStringLiteral("visible"), QJsonValue(isItemVisible(item)));
+    }
 
     object.insert(QStringLiteral("mainTextProperty"), getText(item));
 
