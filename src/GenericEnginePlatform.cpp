@@ -1694,10 +1694,72 @@ void GenericEnginePlatform::findStrategy_xpath(ITransportClient* socket,
     elementReply(socket, items, multiple);
 }
 
-void GenericEnginePlatform::executeCommand_app_method(ITransportClient* socket,
-                                                    const QString& elementId,
-                                                    const QString& method,
-                                                    const QVariantList& params)
+void GenericEnginePlatform::executeCommand_app_method_type(ITransportClient *socket,
+                                                           const QString &elementId,
+                                                           const QString &method,
+                                                           const QString &returnType,
+                                                           const QVariantList &params)
+{
+    qCDebug(categoryGenericEnginePlatform) << Q_FUNC_INFO << socket << elementId << method << params;
+
+    QObject* item = getObject(elementId);
+    if (!item)
+    {
+        socketReply(socket, QString("no item"), 1);
+        return;
+    }
+
+    QGenericArgument arguments[10] = {QGenericArgument()};
+    for (int i = 0; i < params.length(); i++)
+    {
+        arguments[i] = QGenericArgument(params[i].typeName(), params[i].constData());
+    }
+
+    if (returnType == QLatin1String("void"))
+    {
+        bool result = QMetaObject::invokeMethod(
+            item,
+            method.toLatin1().constData(),
+            Qt::DirectConnection,
+            arguments[0],
+            arguments[1],
+            arguments[2],
+            arguments[3],
+            arguments[4],
+            arguments[5],
+            arguments[6],
+            arguments[7],
+            arguments[8],
+            arguments[9]);
+
+        qCDebug(categoryGenericEnginePlatform) << Q_FUNC_INFO << "app:method result:" << (result ? "true" : "false");
+        socketReply(socket, result, result ? 0 : 1);
+    }
+    else
+    {
+        QVariant reply(QVariant::nameToType(returnType.toLatin1()));
+        bool result = QMetaObject::invokeMethod(
+            item,
+            method.toLatin1().constData(),
+            Qt::DirectConnection,
+            QGenericReturnArgument(returnType.toLatin1(), reply.data()),
+            arguments[0],
+            arguments[1],
+            arguments[2],
+            arguments[3],
+            arguments[4],
+            arguments[5],
+            arguments[6],
+            arguments[7],
+            arguments[8],
+            arguments[9]);
+
+        qCDebug(categoryGenericEnginePlatform) << Q_FUNC_INFO << "app:method result:" << (result ? "true" : "false");
+        socketReply(socket, reply, result ? 0 : 1);
+    }
+}
+
+void GenericEnginePlatform::executeCommand_app_method(ITransportClient *socket, const QString &elementId, const QString &method, const QVariantList &params)
 {
     qCDebug(categoryGenericEnginePlatform) << Q_FUNC_INFO << socket << elementId << method << params;
 

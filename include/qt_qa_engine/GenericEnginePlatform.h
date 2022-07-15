@@ -250,6 +250,11 @@ private slots:
                             QObject* parentItem = nullptr);
 
     // execute_%1 methods
+    void executeCommand_app_method_type(ITransportClient *socket,
+                                   const QString &elementId,
+                                   const QString &method,
+                                   const QString &returnType,
+                                   const QVariantList &params);
     void executeCommand_app_method(ITransportClient *socket,
                                    const QString &elementId,
                                    const QString &method,
