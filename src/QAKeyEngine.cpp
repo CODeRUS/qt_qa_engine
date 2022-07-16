@@ -193,7 +193,7 @@ void QAKeyEngine::performChainActions(const QVariantList& actions)
 
         QKeyEvent event(eventType, key, mods, value);
 
-        emit triggered(&event);
+        emit triggered(event);
     }
 }
 
@@ -201,12 +201,12 @@ void QAKeyEngine::sendPress(const QChar& text, int key)
 {
     QKeyEvent event(QKeyEvent::KeyPress, key, Qt::NoModifier, QString(text));
 
-    emit triggered(&event);
+    emit triggered(event);
 }
 
 void QAKeyEngine::sendRelease(const QChar& text, int key)
 {
     QKeyEvent event(QKeyEvent::KeyRelease, key, Qt::NoModifier, QString(text));
 
-    emit triggered(&event);
+    emit triggered(event);
 }

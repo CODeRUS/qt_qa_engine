@@ -11,6 +11,8 @@ class QAPendingEvent;
 class QElapsedTimer;
 class QTimer;
 class QTouchDevice;
+class QMouseEvent;
+class QKeyEvent;
 class QAMouseEngine : public QObject
 {
     Q_OBJECT
@@ -40,8 +42,10 @@ public:
                          int moveSteps = 20,
                          int releaseDelay = 600);
 
+    void pressEnter();
+
     QAPendingEvent* performMultiAction(const QVariantList& multiActions);
-    QAPendingEvent* performTouchAction(const QVariantList& actions);
+    QAPendingEvent* performTouchAction(const QVariantList& actions, Qt::KeyboardModifiers mods = Qt::NoModifier);
 
     void performChainActions(const QVariantList& actions);
 
@@ -52,11 +56,15 @@ public:
 signals:
     void touchEvent(const QTouchEvent& event);
     void mouseEvent(const QMouseEvent& event);
+    void keyEvent(const QKeyEvent& event);
 
 private slots:
-    void onPressed(const QPointF point);
-    void onMoved(const QPointF point);
-    void onReleased(const QPointF point);
+    void onPressed(const QPointF point, Qt::KeyboardModifiers mods);
+    void onMoved(const QPointF point, Qt::KeyboardModifiers mods);
+    void onReleased(const QPointF point, Qt::KeyboardModifiers mods);
+
+    void sendKeyPress(const QChar &text, int key = 0);
+    void sendKeyRelease(const QChar &text, int key = 0);
 
 private:
     friend class TouchAction;
@@ -74,9 +82,9 @@ class EventWorker : public QObject
 {
     Q_OBJECT
 public:
-    explicit EventWorker(const QVariantList& actions, QAMouseEngine* engine);
+    explicit EventWorker(const QVariantList& actions, Qt::KeyboardModifiers mods, QAMouseEngine* engine);
     virtual ~EventWorker();
-    static EventWorker* PerformTouchAction(const QVariantList& actions, QAMouseEngine* engine);
+    static EventWorker* PerformTouchAction(const QVariantList& actions, Qt::KeyboardModifiers mods, QAMouseEngine* engine);
 
 public slots:
     void start();
@@ -90,11 +98,12 @@ private:
 
     QVariantList m_actions;
     QAMouseEngine* m_engine = nullptr;
+    Qt::KeyboardModifiers m_mods;
 
 signals:
-    void pressed(const QPointF point);
-    void moved(const QPointF point);
-    void released(const QPointF point);
+    void pressed(const QPointF point, Qt::KeyboardModifiers mods);
+    void moved(const QPointF point, Qt::KeyboardModifiers mods);
+    void released(const QPointF point, Qt::KeyboardModifiers mods);
 
     void finished();
 };

@@ -38,6 +38,7 @@ GenericEnginePlatform::GenericEnginePlatform(QWindow* window)
     connect(m_mouseEngine, &QAMouseEngine::touchEvent, this, &GenericEnginePlatform::onTouchEvent);
     connect(m_mouseEngine, &QAMouseEngine::mouseEvent, this, &GenericEnginePlatform::onMouseEvent);
     connect(m_keyEngine, &QAKeyEngine::triggered, this, &GenericEnginePlatform::onKeyEvent);
+    connect(m_mouseEngine, &QAMouseEngine::keyEvent, this, &GenericEnginePlatform::onKeyEvent);
 }
 
 QWindow* GenericEnginePlatform::window()
@@ -880,13 +881,18 @@ void GenericEnginePlatform::onTouchEvent(const QTouchEvent& event)
     m_rootWindow->raise();
     m_rootWindow->requestActivate();
     m_rootWindow->setWindowState(Qt::WindowState::WindowActive);
+
+    QEventLoop loop;
+    QTimer::singleShot(100, &loop, &QEventLoop::quit);
+    loop.exec();
 #endif
 
     QWindowSystemInterface::handleTouchEvent(
         m_rootWindow,
         event.timestamp(),
         event.device(),
-        QWindowSystemInterfacePrivate::toNativeTouchPoints(event.touchPoints(), m_rootWindow));
+        QWindowSystemInterfacePrivate::toNativeTouchPoints(event.touchPoints(), m_rootWindow),
+        event.modifiers());
 }
 
 void GenericEnginePlatform::onMouseEvent(const QMouseEvent& event)
@@ -895,6 +901,10 @@ void GenericEnginePlatform::onMouseEvent(const QMouseEvent& event)
     m_rootWindow->raise();
     m_rootWindow->requestActivate();
     m_rootWindow->setWindowState(Qt::WindowState::WindowActive);
+
+    QEventLoop loop;
+    QTimer::singleShot(100, &loop, &QEventLoop::quit);
+    loop.exec();
 #endif
 
     QWindowSystemInterface::handleMouseEvent(m_rootWindow,
@@ -906,12 +916,14 @@ void GenericEnginePlatform::onMouseEvent(const QMouseEvent& event)
                                              event.button(),
                                              event.type(),
 #endif
-                                             Qt::NoModifier,
+                                             event.modifiers(),
                                              Qt::MouseEventNotSynthesized);
 }
 
-void GenericEnginePlatform::onKeyEvent(QKeyEvent* event)
+void GenericEnginePlatform::onKeyEvent(const QKeyEvent& event)
 {
+    qCDebug(categoryGenericEnginePlatform) << Q_FUNC_INFO << event.type() << event.key() << event.modifiers() << event.text();
+
     m_rootWindow->raise();
     m_rootWindow->requestActivate();
     m_rootWindow->setWindowState(Qt::WindowState::WindowActive);
@@ -921,7 +933,7 @@ void GenericEnginePlatform::onKeyEvent(QKeyEvent* event)
     loop.exec();
 
     QWindowSystemInterface::handleKeyEvent(
-        m_rootWindow, event->type(), event->key(), event->modifiers(), event->text());
+        m_rootWindow, event.type(), event.key(), event.modifiers(), event.text());
 }
 
 void GenericEnginePlatform::appConnectCommand(ITransportClient* socket)
@@ -1577,38 +1589,46 @@ void GenericEnginePlatform::performActionsCommand(ITransportClient* socket,
 {
     qCDebug(categoryGenericEnginePlatform) << Q_FUNC_INFO << socket;
 
-    QVariantList pointerArgs;
-    QVariantList keyArgs;
+//    QVariantList pointerArgs;
+//    QVariantList keyArgs;
 
     const auto paramsArgList = paramsArg.toList();
-    for (const QVariant& paramsVar : qAsConst(paramsArgList))
-    {
-        const QVariantMap param = paramsVar.toMap();
-        if (param.value(QStringLiteral("type")).toString() == QLatin1String("pointer"))
-        {
-            pointerArgs.append(param);
-        }
-        else if (param.value(QStringLiteral("type")).toString() == QLatin1String("key"))
-        {
-            keyArgs.append(param);
-        }
-    }
+    m_mouseEngine->performChainActions(paramsArgList);
 
-    if (keyArgs.size() > 0 && pointerArgs.size() > 0 && keyArgs.size() != pointerArgs.size())
-    {
-        qCWarning(categoryGenericEnginePlatform)
-            << Q_FUNC_INFO << "Found two actions lists with mismatching size!";
-    }
+//    for (const QVariant& paramsVar : qAsConst(paramsArgList))
+//    {
+//        const QVariantMap param = paramsVar.toMap();
+//        if (param.value(QStringLiteral("type")).toString() == QLatin1String("pointer"))
+//        {
+//            pointerArgs.append(param);
+//        }
+//        else if (param.value(QStringLiteral("type")).toString() == QLatin1String("key"))
+//        {
+//            keyArgs.append(param);
+//        }
+//    }
 
-    if (!pointerArgs.isEmpty())
-    {
-        m_mouseEngine->performChainActions(pointerArgs);
-    }
+//    if (keyArgs.size() > 0 && pointerArgs.size() > 0 && keyArgs.size() != pointerArgs.size())
+//    {
+//        qCWarning(categoryGenericEnginePlatform)
+//            << Q_FUNC_INFO << "Found two actions lists with mismatching size!";
+//        return;
+//    }
 
-    if (!keyArgs.isEmpty())
-    {
-        m_keyEngine->performChainActions(keyArgs);
-    }
+//    for (int i = 0; i < keyArgs.size(); i++)
+//    {
+
+//    }
+
+//    if (!pointerArgs.isEmpty())
+//    {
+//        m_mouseEngine->performChainActions(pointerArgs);
+//    }
+
+//    if (!keyArgs.isEmpty())
+//    {
+//        m_keyEngine->performChainActions(keyArgs);
+//    }
 
     socketReply(socket, QString());
 }
