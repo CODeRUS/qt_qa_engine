@@ -18,7 +18,10 @@
 #include <QStandardPaths>
 #include <QTimer>
 #include <QXmlStreamWriter>
-//#include <QXmlQuery>
+
+#if defined(MO_USE_QXMLPATTERNS)
+#include <QXmlQuery>
+#endif
 
 #include <qpa/qwindowsysteminterface_p.h>
 
@@ -282,6 +285,7 @@ QObjectList GenericEnginePlatform::findItemsByXpath(const QString& xpath, QObjec
 {
     qCDebug(categoryGenericEnginePlatform) << Q_FUNC_INFO << xpath << parentItem;
 
+    QObjectList items;
 #if defined(MO_USE_QXMLPATTERNS)
     if (!parentItem)
     {
@@ -329,12 +333,8 @@ QObjectList GenericEnginePlatform::findItemsByXpath(const QString& xpath, QObjec
             reader.skipCurrentElement();
         }
     }
-
-    return items;
-#else
-    QObjectList items;
-    return items;
 #endif
+    return items;
 }
 
 QObjectList GenericEnginePlatform::filterVisibleItems(QObjectList items)
