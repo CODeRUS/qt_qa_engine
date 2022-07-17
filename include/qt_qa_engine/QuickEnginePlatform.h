@@ -52,9 +52,6 @@ protected:
     QQuickItem* m_touchIndicator = nullptr;
 
 private slots:
-    // synthesized input events
-    virtual void onKeyEvent(QKeyEvent* event) override;
-
     // execute_%1 methods
     void executeCommand_touch_pressAndHold(ITransportClient* socket,
                                            qlonglong posx,

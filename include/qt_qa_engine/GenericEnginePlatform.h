@@ -4,7 +4,6 @@
 #include <qt_qa_engine/IEnginePlatform.h>
 
 class QAMouseEngine;
-class QAKeyEngine;
 class QTouchEvent;
 class QMouseEvent;
 class QKeyEvent;
@@ -94,7 +93,6 @@ protected:
 
     QHash<QString, QObject*> m_items;
     QAMouseEngine* m_mouseEngine = nullptr;
-    QAKeyEngine* m_keyEngine = nullptr;
 
     QHash<QString, QStringList> m_blacklistedProperties;
 
@@ -111,7 +109,7 @@ private slots:
     // synthesized input events
     virtual void onTouchEvent(const QTouchEvent& event);
     virtual void onMouseEvent(const QMouseEvent& event);
-    virtual void onKeyEvent(const QKeyEvent &event);
+    virtual void onKeyEvent(const QKeyEvent& event);
 
     // IEnginePlatform interface
     virtual void appConnectCommand(ITransportClient* socket) override;
@@ -250,19 +248,19 @@ private slots:
                             QObject* parentItem = nullptr);
 
     // execute_%1 methods
-    void executeCommand_app_method_type(ITransportClient *socket,
-                                   const QString &elementId,
-                                   const QString &method,
-                                   const QString &returnType,
-                                   const QVariantList &params);
-    void executeCommand_app_method(ITransportClient *socket,
-                                   const QString &elementId,
-                                   const QString &method,
-                                   const QVariantList &params);
-    void executeCommand_app_method_void(ITransportClient *socket,
-                                   const QString &elementId,
-                                   const QString &method,
-                                   const QVariantList &params);
+    void executeCommand_app_method_type(ITransportClient* socket,
+                                        const QString& elementId,
+                                        const QString& method,
+                                        const QString& returnType,
+                                        const QVariantList& params);
+    void executeCommand_app_method(ITransportClient* socket,
+                                   const QString& elementId,
+                                   const QString& method,
+                                   const QVariantList& params);
+    void executeCommand_app_method_void(ITransportClient* socket,
+                                        const QString& elementId,
+                                        const QString& method,
+                                        const QVariantList& params);
     void executeCommand_app_dumpTree(ITransportClient* socket);
     void executeCommand_app_setAttribute(ITransportClient* socket,
                                          const QString& elementId,
