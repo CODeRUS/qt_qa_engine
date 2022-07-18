@@ -42,11 +42,47 @@ Usage:
 
 ### app:method
 
+method for controlling QLoggingCategory filterRules
+
+Usage:
+
+`driver.execute_script("app:setLoggingFilter", "autoqa.qaengine.*.debug=true")`
+
+### app:installFileLogger
+
+settings capturing logs to local file
+
+Usage:
+
+`driver.execute_script("app:installFileLogger", "/home/user/myapp.log")`
+
+### app:method
+
 invoke meta method on element
 
 Usage:
 
 `driver.execute_script("app:method", "MyItem_0x12345678", "myFunction", ["some", "args", 15])`
+
+`"MyItem_0x12345678"` is element.id, you should find element before using this method
+
+### app:method:void
+
+invoke meta method on element, same as app:method, but for functions with void return
+
+Usage:
+
+`driver.execute_script("app:method:void", "MyItem_0x12345678", "myFunction", ["some", "args", 15])`
+
+`"MyItem_0x12345678"` is element.id, you should find element before using this method
+
+### app:method:type
+
+invoke meta method on element, same as app:method, but 3rd parameter is for return type name
+
+Usage:
+
+`driver.execute_script("app:method:type", "MyItem_0x12345678", "myFunction", "QString", ["some", "args", 15])`
 
 `"MyItem_0x12345678"` is element.id, you should find element before using this method
 
