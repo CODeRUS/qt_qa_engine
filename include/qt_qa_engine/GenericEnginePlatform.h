@@ -92,7 +92,7 @@ protected:
     QObject* m_rootObject = nullptr;
 
     QHash<QString, QObject*> m_items;
-    QAKeyMouseEngine* m_mouseEngine = nullptr;
+    QAKeyMouseEngine* m_keyMouseEngine = nullptr;
 
     QHash<QString, QStringList> m_blacklistedProperties;
 

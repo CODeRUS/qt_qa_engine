@@ -32,13 +32,13 @@ Q_LOGGING_CATEGORY(categoryGenericEnginePlatform, "autoqa.qaengine.platform.gene
 GenericEnginePlatform::GenericEnginePlatform(QWindow* window)
     : IEnginePlatform(window)
     , m_rootWindow(window)
-    , m_mouseEngine(new QAKeyMouseEngine(this))
+    , m_keyMouseEngine(new QAKeyMouseEngine(this))
 {
     qCDebug(categoryGenericEnginePlatform) << Q_FUNC_INFO;
 
-    connect(m_mouseEngine, &QAKeyMouseEngine::touchEvent, this, &GenericEnginePlatform::onTouchEvent);
-    connect(m_mouseEngine, &QAKeyMouseEngine::mouseEvent, this, &GenericEnginePlatform::onMouseEvent);
-    connect(m_mouseEngine, &QAKeyMouseEngine::keyEvent, this, &GenericEnginePlatform::onKeyEvent);
+    connect(m_keyMouseEngine, &QAKeyMouseEngine::touchEvent, this, &GenericEnginePlatform::onTouchEvent);
+    connect(m_keyMouseEngine, &QAKeyMouseEngine::mouseEvent, this, &GenericEnginePlatform::onMouseEvent);
+    connect(m_keyMouseEngine, &QAKeyMouseEngine::keyEvent, this, &GenericEnginePlatform::onKeyEvent);
 }
 
 QWindow* GenericEnginePlatform::window()
@@ -641,7 +641,7 @@ void GenericEnginePlatform::clickPoint(float posx, float posy)
     QTimer timer;
     timer.setSingleShot(true);
     timer.setInterval(50);
-    connect(m_mouseEngine->click(QPointF(posx, posy)),
+    connect(m_keyMouseEngine->click(QPointF(posx, posy)),
             &QAPendingEvent::completed,
             &timer,
             static_cast<void (QTimer::*)()>(&QTimer::start));
@@ -659,7 +659,7 @@ void GenericEnginePlatform::pressAndHold(float posx, float posy, int delay)
     qCDebug(categoryGenericEnginePlatform) << Q_FUNC_INFO << posx << posy << delay;
 
     QEventLoop loop;
-    connect(m_mouseEngine->pressAndHold(QPointF(posx, posy), delay),
+    connect(m_keyMouseEngine->pressAndHold(QPointF(posx, posy), delay),
             &QAPendingEvent::completed,
             &loop,
             &QEventLoop::quit);
@@ -674,7 +674,7 @@ void GenericEnginePlatform::mouseMove(float startx, float starty, float stopx, f
     QTimer timer;
     timer.setInterval(800);
     timer.setSingleShot(true);
-    connect(m_mouseEngine->move(QPointF(startx, starty), QPointF(stopx, stopy)),
+    connect(m_keyMouseEngine->move(QPointF(startx, starty), QPointF(stopx, stopy)),
             &QAPendingEvent::completed,
             &timer,
             static_cast<void (QTimer::*)()>(&QTimer::start));
@@ -692,7 +692,7 @@ void GenericEnginePlatform::mouseDrag(
     QTimer timer;
     timer.setInterval(800);
     timer.setSingleShot(true);
-    connect(m_mouseEngine->drag(QPointF(startx, starty), QPointF(stopx, stopy), delay),
+    connect(m_keyMouseEngine->drag(QPointF(startx, starty), QPointF(stopx, stopy), delay),
             &QAPendingEvent::completed,
             &timer,
             static_cast<void (QTimer::*)()>(&QTimer::start));
@@ -1384,7 +1384,7 @@ void GenericEnginePlatform::submitCommand(ITransportClient* socket, const QStrin
 {
     qCDebug(categoryGenericEnginePlatform) << Q_FUNC_INFO << socket << elementId;
 
-    m_mouseEngine->pressEnter();
+    m_keyMouseEngine->pressEnter();
     socketReply(socket, QString());
 }
 
@@ -1558,7 +1558,7 @@ void GenericEnginePlatform::performTouchCommand(ITransportClient* socket, const 
     qCDebug(categoryGenericEnginePlatform) << Q_FUNC_INFO << socket << paramsArg;
 
     QEventLoop loop;
-    connect(m_mouseEngine->performTouchAction(paramsArg.toList()),
+    connect(m_keyMouseEngine->performTouchAction(paramsArg.toList()),
             &QAPendingEvent::completed,
             &loop,
             &QEventLoop::quit);
@@ -1573,7 +1573,7 @@ void GenericEnginePlatform::performMultiActionCommand(ITransportClient* socket,
     qCDebug(categoryGenericEnginePlatform) << Q_FUNC_INFO << socket << paramsArg;
 
     QEventLoop loop;
-    connect(m_mouseEngine->performMultiAction(paramsArg.toList()),
+    connect(m_keyMouseEngine->performMultiAction(paramsArg.toList()),
             &QAPendingEvent::completed,
             &loop,
             &QEventLoop::quit);
@@ -1588,7 +1588,7 @@ void GenericEnginePlatform::performActionsCommand(ITransportClient* socket,
     qCDebug(categoryGenericEnginePlatform) << Q_FUNC_INFO << socket;
 
     const auto paramsArgList = paramsArg.toList();
-    m_mouseEngine->performChainActions(paramsArgList);
+    m_keyMouseEngine->performChainActions(paramsArgList);
 
     socketReply(socket, QString());
 }
