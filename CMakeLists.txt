@@ -107,10 +107,9 @@ list(APPEND
     ${PROJECT_NAME}_HEADERS
     include/qt_qa_engine/GenericEnginePlatform.h
     include/qt_qa_engine/ITransportServer.h
-    include/qt_qa_engine/QAKeyEngine.h
     include/qt_qa_engine/IEnginePlatform.h
     include/qt_qa_engine/QAEngine.h
-    include/qt_qa_engine/QAMouseEngine.h
+    include/qt_qa_engine/QAKeyMouseEngine.h
     include/qt_qa_engine/TCPSocketClient.h
     include/qt_qa_engine/ITransportClient.h
     include/qt_qa_engine/QAEngineSocketClient.h
@@ -126,10 +125,9 @@ list(APPEND
     src/IEnginePlatform.cpp
     src/QAEngineSocketClient.cpp
     src/ITransportClient.cpp
-    src/QAKeyEngine.cpp
     src/TCPSocketClient.cpp
     src/ITransportServer.cpp
-    src/QAMouseEngine.cpp
+    src/QAKeyMouseEngine.cpp
     src/TCPSocketServer.cpp
     src/loader.cpp
 )

@@ -2,7 +2,7 @@
 #include <qt_qa_engine/ITransportClient.h>
 #include <qt_qa_engine/QAEngine.h>
 #include <qt_qa_engine/QAKeyEngine.h>
-#include <qt_qa_engine/QAMouseEngine.h>
+#include <qt_qa_engine/QAKeyMouseEngine.h>
 #include <qt_qa_engine/WidgetsEnginePlatform.h>
 
 #include <QAbstractItemView>

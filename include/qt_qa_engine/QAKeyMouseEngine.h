@@ -1,6 +1,6 @@
 // Copyright (c) 2019-2020 Open Mobile Platform LLC.
-#ifndef QAMOUSEENGINE_HPP
-#define QAMOUSEENGINE_HPP
+#ifndef QAKEYMOUSEENGINE_H
+#define QAKEYMOUSEENGINE_H
 
 #include <QObject>
 #include <QPointF>
@@ -13,11 +13,11 @@ class QTimer;
 class QTouchDevice;
 class QMouseEvent;
 class QKeyEvent;
-class QAMouseEngine : public QObject
+class QAKeyMouseEngine : public QObject
 {
     Q_OBJECT
 public:
-    explicit QAMouseEngine(QObject* parent = nullptr);
+    explicit QAKeyMouseEngine(QObject* parent = nullptr);
     bool isRunning() const;
 
     enum MouseMode
@@ -82,9 +82,9 @@ class EventWorker : public QObject
 {
     Q_OBJECT
 public:
-    explicit EventWorker(const QVariantList& actions, Qt::KeyboardModifiers mods, QAMouseEngine* engine);
+    explicit EventWorker(const QVariantList& actions, Qt::KeyboardModifiers mods, QAKeyMouseEngine* engine);
     virtual ~EventWorker();
-    static EventWorker* PerformTouchAction(const QVariantList& actions, Qt::KeyboardModifiers mods, QAMouseEngine* engine);
+    static EventWorker* PerformTouchAction(const QVariantList& actions, Qt::KeyboardModifiers mods, QAKeyMouseEngine* engine);
 
 public slots:
     void start();
@@ -97,7 +97,7 @@ private:
     void sendMove(const QPointF& previousPoint, const QPointF& point, int duration, int moveSteps);
 
     QVariantList m_actions;
-    QAMouseEngine* m_engine = nullptr;
+    QAKeyMouseEngine* m_engine = nullptr;
     Qt::KeyboardModifiers m_mods;
 
 signals:
@@ -108,4 +108,4 @@ signals:
     void finished();
 };
 
-#endif // QAMOUSEENGINE_HPP
+#endif // QAKEYMOUSEENGINE_H

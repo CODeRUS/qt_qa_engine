@@ -2,7 +2,7 @@
 #include <qt_qa_engine/GenericEnginePlatform.h>
 #include <qt_qa_engine/ITransportClient.h>
 #include <qt_qa_engine/QAEngine.h>
-#include <qt_qa_engine/QAMouseEngine.h>
+#include <qt_qa_engine/QAKeyMouseEngine.h>
 #include <qt_qa_engine/QAPendingEvent.h>
 
 #include <QClipboard>
@@ -32,13 +32,13 @@ Q_LOGGING_CATEGORY(categoryGenericEnginePlatform, "autoqa.qaengine.platform.gene
 GenericEnginePlatform::GenericEnginePlatform(QWindow* window)
     : IEnginePlatform(window)
     , m_rootWindow(window)
-    , m_mouseEngine(new QAMouseEngine(this))
+    , m_mouseEngine(new QAKeyMouseEngine(this))
 {
     qCDebug(categoryGenericEnginePlatform) << Q_FUNC_INFO;
 
-    connect(m_mouseEngine, &QAMouseEngine::touchEvent, this, &GenericEnginePlatform::onTouchEvent);
-    connect(m_mouseEngine, &QAMouseEngine::mouseEvent, this, &GenericEnginePlatform::onMouseEvent);
-    connect(m_mouseEngine, &QAMouseEngine::keyEvent, this, &GenericEnginePlatform::onKeyEvent);
+    connect(m_mouseEngine, &QAKeyMouseEngine::touchEvent, this, &GenericEnginePlatform::onTouchEvent);
+    connect(m_mouseEngine, &QAKeyMouseEngine::mouseEvent, this, &GenericEnginePlatform::onMouseEvent);
+    connect(m_mouseEngine, &QAKeyMouseEngine::keyEvent, this, &GenericEnginePlatform::onKeyEvent);
 }
 
 QWindow* GenericEnginePlatform::window()
