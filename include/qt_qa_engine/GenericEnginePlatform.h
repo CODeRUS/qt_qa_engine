@@ -33,6 +33,7 @@ public:
     QString getText(QObject* item) override;
     QRect getGeometry(QObject* item) override;
     QRect getAbsGeometry(QObject* item) override;
+    QPoint getClickPosition(QObject *item) override;
 
 protected:
     friend class QAKeyMouseEngine;
