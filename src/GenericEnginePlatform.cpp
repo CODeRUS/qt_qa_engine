@@ -1674,6 +1674,17 @@ void GenericEnginePlatform::findStrategy_xpath(ITransportClient* socket,
     elementReply(socket, items, multiple);
 }
 
+void GenericEnginePlatform::executeCommand_window_frameSize(ITransportClient *socket)
+{
+    const auto frameMargins = m_rootWindow->frameMargins();
+    QJsonObject reply;
+    reply.insert(QStringLiteral("left"), frameMargins.left());
+    reply.insert(QStringLiteral("right"), frameMargins.right());
+    reply.insert(QStringLiteral("top"), frameMargins.top());
+    reply.insert(QStringLiteral("bottom"), frameMargins.bottom());
+    socketReply(socket, reply);
+}
+
 void GenericEnginePlatform::executeCommand_app_method_type(ITransportClient* socket,
                                                            const QString& elementId,
                                                            const QString& method,

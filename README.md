@@ -40,6 +40,14 @@ Usage:
 
 `driver.execute_script("touch:mouseDrag", 20, 40, 60, 80)`
 
+### window:frameSize
+
+returns size of window frame. example output: `{'bottom': 1, 'left': 1, 'right': 1, 'top': 31}`
+
+Usage:
+
+`driver.execute_script("window:frameSize")`
+
 ### app:method
 
 method for controlling QLoggingCategory filterRules
