@@ -29,6 +29,7 @@ public:
     virtual QObject* getParent(QObject* item) = 0;
     virtual QString getText(QObject* item) = 0;
     virtual QPoint getAbsPosition(QObject* item) = 0;
+    virtual QPoint getClickPosition(QObject* item) = 0;
     virtual QPoint getPosition(QObject* item) = 0;
     virtual QSize getSize(QObject* item) = 0;
     virtual QRect getGeometry(QObject* item) = 0;

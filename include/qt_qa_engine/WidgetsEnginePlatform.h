@@ -24,6 +24,7 @@ public slots:
     QObject* getParent(QObject* item) override;
 
     QPoint getAbsPosition(QObject* item) override;
+    QPoint getClickPosition(QObject *item) override;
     QPoint getPosition(QObject* item) override;
     QSize getSize(QObject* item) override;
     bool isItemEnabled(QObject* item) override;

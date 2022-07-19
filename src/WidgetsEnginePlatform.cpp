@@ -691,6 +691,28 @@ QPoint WidgetsEnginePlatform::getAbsPosition(QObject* item)
     }
 }
 
+QPoint WidgetsEnginePlatform::getClickPosition(QObject *item)
+{
+    auto pos = getAbsPosition(item);
+
+    QAction* a = qobject_cast<QAction*>(item);
+    if (a)
+    {
+        if (s_actionHash.contains(a))
+        {
+            QWidget* w = s_actionHash.value(a);
+            QMenu* m = qobject_cast<QMenu*>(w);
+            if (m)
+            {
+                pos.setX(pos.x() + m_rootWindow->frameMargins().left());
+                pos.setY(pos.y() + m_rootWindow->frameMargins().top());
+            }
+        }
+    }
+
+    return pos;
+}
+
 QPoint WidgetsEnginePlatform::getPosition(QObject* item)
 {
     qCDebug(categoryWidgetsEnginePlatform) << Q_FUNC_INFO << item;

@@ -407,6 +407,11 @@ QRect GenericEnginePlatform::getAbsGeometry(QObject* item)
     return QRect(getAbsPosition(item), getSize(item));
 }
 
+QPoint GenericEnginePlatform::getClickPosition(QObject *item)
+{
+    return getAbsPosition(item);
+}
+
 QJsonObject GenericEnginePlatform::dumpObject(QObject* item, int depth)
 {
     if (!item)
@@ -592,7 +597,7 @@ bool GenericEnginePlatform::recursiveDumpXml(QXmlStreamWriter* writer, QObject* 
 
 void GenericEnginePlatform::clickItem(QObject* item)
 {
-    const QPoint itemAbs = getAbsPosition(item);
+    const QPoint itemAbs = getClickPosition(item);
     const QSize size = getSize(item);
     qCDebug(categoryGenericEnginePlatform) << Q_FUNC_INFO << item << itemAbs << size;
 
