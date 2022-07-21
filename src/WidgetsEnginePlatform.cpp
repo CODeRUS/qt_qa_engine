@@ -741,17 +741,19 @@ QPoint WidgetsEnginePlatform::getAbsPosition(QObject* item)
     {
         return QPoint();
     }
-    if (w == qApp->activePopupWidget())
-    {
-        return m_rootWidget->mapFromGlobal(w->pos());
-    }
     else if (w == m_rootWidget)
     {
         return QPoint();
     }
     else if (qApp->activePopupWidget())
     {
-        return m_rootWidget->mapFromGlobal(qApp->activePopupWidget()->mapToParent(w->pos()));
+        auto&& popup = qApp->activePopupWidget();
+        QPoint pos = m_rootWidget->mapFromGlobal(popup->pos());
+        if (w != popup)
+        {
+            pos += w->mapTo(rootWidget(), QPoint(0, 0));
+        }
+        return pos;
     }
     return w->mapTo(m_rootWidget, QPoint(0, 0));
 }
