@@ -57,6 +57,7 @@ signals:
     void touchEvent(const QTouchEvent& event);
     void mouseEvent(const QMouseEvent& event);
     void keyEvent(const QKeyEvent& event);
+    void wheelEvent(const QWheelEvent& event);
 
 private slots:
     void onPressed(const QPointF point);
@@ -68,9 +69,10 @@ private slots:
 
     void onKeyPressed(const QString &value);
     void onKeyReleased(const QString &value);
-    void onMousePressed(const QPointF point, int button = 0);
-    void onMouseReleased(const QPointF point, int button = 0);
-    void onMouseMoved(const QPointF point);
+    void onMousePressed(const QPointF &point, int button = 0);
+    void onMouseReleased(const QPointF &point, int button = 0);
+    void onMouseMoved(const QPointF &point);
+    void onMouseWheeled(const QPointF &delta, const QPointF &point);
 
 private:
     void handleKey(const QString &value, bool keyUp);
@@ -115,13 +117,14 @@ private:
     QVariantList m_actions;
 
 signals:
-    void pressed(const QPointF point);
-    void moved(const QPointF point);
-    void released(const QPointF point);
+    void pressed(const QPointF &point);
+    void moved(const QPointF &point);
+    void released(const QPointF &point);
 
-    void mousePressed(const QPointF point, int button = 0);
-    void mouseReleased(const QPointF point, int button = 0);
-    void mouseMoved(const QPointF point);
+    void mousePressed(const QPointF &point, int button = 0);
+    void mouseReleased(const QPointF &point, int button = 0);
+    void mouseMoved(const QPointF &point);
+    void mouseWheeled(const QPointF &delta, const QPointF &point);
 
     void keyPressed(const QString &value);
     void keyReleased(const QString &value);

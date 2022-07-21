@@ -113,6 +113,7 @@ private slots:
     virtual void onTouchEvent(const QTouchEvent& event);
     virtual void onMouseEvent(const QMouseEvent& event);
     virtual void onKeyEvent(const QKeyEvent& event);
+    virtual void onWheelEvent(const QWheelEvent& event);
 
     // IEnginePlatform interface
     virtual void appConnectCommand(ITransportClient* socket) override;

@@ -41,6 +41,7 @@ GenericEnginePlatform::GenericEnginePlatform(QWindow* window)
     connect(m_keyMouseEngine, &QAKeyMouseEngine::touchEvent, this, &GenericEnginePlatform::onTouchEvent);
     connect(m_keyMouseEngine, &QAKeyMouseEngine::mouseEvent, this, &GenericEnginePlatform::onMouseEvent);
     connect(m_keyMouseEngine, &QAKeyMouseEngine::keyEvent, this, &GenericEnginePlatform::onKeyEvent);
+    connect(m_keyMouseEngine, &QAKeyMouseEngine::wheelEvent, this, &GenericEnginePlatform::onWheelEvent);
 }
 
 QWindow* GenericEnginePlatform::window()
@@ -914,7 +915,16 @@ void GenericEnginePlatform::onKeyEvent(const QKeyEvent& event)
         << Q_FUNC_INFO << event.type() << event.key() << event.modifiers() << event.text();
 
    QWindowSystemInterface::handleKeyEvent(
-        m_rootWindow, event.type(), event.key(), event.modifiers(), event.text());
+               m_rootWindow, event.type(), event.key(), event.modifiers(), event.text());
+}
+
+void GenericEnginePlatform::onWheelEvent(const QWheelEvent &event)
+{
+    qCDebug(categoryGenericEnginePlatform)
+        << Q_FUNC_INFO << event.type() << event.pos() << event.globalPos() << event.pixelDelta() << event.angleDelta() << event.buttons() << event.modifiers();
+
+    QWindowSystemInterface::handleWheelEvent(
+                m_rootWindow, event.pos(), event.globalPos(), event.pixelDelta(), event.angleDelta(), event.modifiers(), event.phase());
 }
 
 void GenericEnginePlatform::appConnectCommand(ITransportClient* socket)
@@ -1570,8 +1580,15 @@ void GenericEnginePlatform::performActionsCommand(ITransportClient* socket,
 {
     qCDebug(categoryGenericEnginePlatform) << Q_FUNC_INFO << socket;
 
+    const QVariantList params = paramsArg.toList();
+    if (params.size() == 0)
+    {
+        socketReply(socket, QString());
+        return;
+    }
+
     QEventLoop loop;
-    connect(m_keyMouseEngine->performChainActions(paramsArg.toList()),
+    connect(m_keyMouseEngine->performChainActions(params),
             &QAPendingEvent::completed,
             &loop,
             &QEventLoop::quit);
