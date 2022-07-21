@@ -4,6 +4,7 @@
 #include <qt_qa_engine/QAKeyMouseEngine.h>
 #include <qt_qa_engine/QAPendingEvent.h>
 
+#include <QCoreApplication>
 #include <QKeyEvent>
 #include <QMouseEvent>
 #include <QTimer>
@@ -298,12 +299,28 @@ QAPendingEvent* QAKeyMouseEngine::move(
 
 void QAKeyMouseEngine::pressEnter()
 {
+#if (!defined(MO_OS_ANDROID) && !defined(MO_OS_IOS))
+    QAEngine::instance()->getPlatform()->activateWindow();
+
+    QEventLoop loop;
+    QTimer::singleShot(100, &loop, &QEventLoop::quit);
+    loop.exec();
+#endif
+
     sendKeyPress('\n', Qt::Key_Enter);
     sendKeyRelease('\n', Qt::Key_Enter);
 }
 
 QAPendingEvent* QAKeyMouseEngine::performMultiAction(const QVariantList& multiActions)
 {
+#if (!defined(MO_OS_ANDROID) && !defined(MO_OS_IOS))
+    QAEngine::instance()->getPlatform()->activateWindow();
+
+    QEventLoop loop;
+    QTimer::singleShot(100, &loop, &QEventLoop::quit);
+    loop.exec();
+#endif
+
     QAPendingEvent* event = new QAPendingEvent(this);
     event->setProperty("finishedCount", 0);
     QReadWriteLock* lock = new QReadWriteLock();
@@ -313,7 +330,7 @@ QAPendingEvent* QAKeyMouseEngine::performMultiAction(const QVariantList& multiAc
     {
         const QVariantList actions = multiActionVar.toList();
 
-        EventWorker* worker = EventWorker::PerformTouchAction(actions, Qt::NoModifier, this);
+        EventWorker* worker = EventWorker::PerformTouchAction(actions);
         connect(worker, &EventWorker::pressed, this, &QAKeyMouseEngine::onPressed);
         connect(worker, &EventWorker::moved, this, &QAKeyMouseEngine::onMoved);
         connect(worker, &EventWorker::released, this, &QAKeyMouseEngine::onReleased);
@@ -343,11 +360,18 @@ QAPendingEvent* QAKeyMouseEngine::performMultiAction(const QVariantList& multiAc
     return event;
 }
 
-QAPendingEvent* QAKeyMouseEngine::performTouchAction(const QVariantList& actions,
-                                                     Qt::KeyboardModifiers mods)
+QAPendingEvent* QAKeyMouseEngine::performTouchAction(const QVariantList& actions)
 {
+#if (!defined(MO_OS_ANDROID) && !defined(MO_OS_IOS))
+    QAEngine::instance()->getPlatform()->activateWindow();
+
+    QEventLoop loop;
+    QTimer::singleShot(100, &loop, &QEventLoop::quit);
+    loop.exec();
+#endif
+
     QAPendingEvent* event = new QAPendingEvent(this);
-    EventWorker* worker = EventWorker::PerformTouchAction(actions, mods, this);
+    EventWorker* worker = EventWorker::PerformTouchAction(actions);
     connect(worker, &EventWorker::pressed, this, &QAKeyMouseEngine::onPressed);
     connect(worker, &EventWorker::moved, this, &QAKeyMouseEngine::onMoved);
     connect(worker, &EventWorker::released, this, &QAKeyMouseEngine::onReleased);
@@ -356,231 +380,44 @@ QAPendingEvent* QAKeyMouseEngine::performTouchAction(const QVariantList& actions
             event,
             [event]()
             {
+                qDebug() << Q_FUNC_INFO << "event finished";
                 QMetaObject::invokeMethod(event, "setCompleted", Qt::QueuedConnection);
                 event->deleteLater();
             });
 
-    if (m_mode == TouchEventMode)
-    {
-        m_touchPoints.clear();
-    }
-
     return event;
 }
 
-void QAKeyMouseEngine::performChainActions(const QVariantList& actions)
+QAPendingEvent* QAKeyMouseEngine::performChainActions(const QVariantList& actions)
 {
     qCDebug(categoryKeyMouseEngine) << Q_FUNC_INFO << actions;
+#if (!defined(MO_OS_ANDROID) && !defined(MO_OS_IOS))
+    QAEngine::instance()->getPlatform()->activateWindow();
 
-    QVariantList pointerArgs;
-    QVariantList keyArgs;
+    QEventLoop loop;
+    QTimer::singleShot(100, &loop, &QEventLoop::quit);
+    loop.exec();
+#endif
 
-    for (const QVariant& paramsVar : qAsConst(actions))
-    {
-        const QVariantMap param = paramsVar.toMap();
-        if (param.value(QStringLiteral("type")).toString() == QLatin1String("pointer"))
-        {
-            pointerArgs.append(param);
-        }
-        else if (param.value(QStringLiteral("type")).toString() == QLatin1String("key"))
-        {
-            keyArgs.append(param);
-        }
-    }
-
-    QVariantList keyActions = keyArgs.first().toMap().value(QStringLiteral("actions")).toList();
-    QVariantList mouseActions =
-        pointerArgs.first().toMap().value(QStringLiteral("actions")).toList();
-
-    qCDebug(categoryKeyMouseEngine) << Q_FUNC_INFO << keyActions;
-    qCDebug(categoryKeyMouseEngine) << Q_FUNC_INFO << mouseActions;
-
-    if (keyActions.size() != mouseActions.size())
-    {
-        qCWarning(categoryKeyMouseEngine)
-            << Q_FUNC_INFO << "Found two actions lists with mismatching size!";
-        return;
-    }
-
-    QPointF previousPoint;
-    Qt::KeyboardModifiers mods;
-
-    for (int i = 0; i < keyActions.size(); i++)
-    {
-        // key action
-        {
-            const auto& actionVar = keyActions.at(i);
-            const QVariantMap action = actionVar.toMap();
-            qDebug() << action;
-            QKeyEvent::Type eventType = QKeyEvent::KeyPress;
-            const QString type = action.value(QStringLiteral("type")).toString();
-            if (type == QLatin1String("pause"))
+    QAPendingEvent* event = new QAPendingEvent(this);
+    EventWorker* worker = EventWorker::PerformChainAction(actions);
+    connect(worker, &EventWorker::keyPressed, this, &QAKeyMouseEngine::onKeyPressed);
+    connect(worker, &EventWorker::keyReleased, this, &QAKeyMouseEngine::onKeyReleased);
+    connect(worker, &EventWorker::mousePressed, this, &QAKeyMouseEngine::onMousePressed);
+    connect(worker, &EventWorker::mouseReleased, this, &QAKeyMouseEngine::onMouseReleased);
+    connect(worker, &EventWorker::mouseMoved, this, &QAKeyMouseEngine::onMouseMoved);
+    connect(worker,
+            &EventWorker::finished,
+            this,
+            [event]()
             {
-                const int duration = action.value(QStringLiteral("duration"), "0").toInt();
-                if (duration > 0)
-                {
-                    QEventLoop loop;
-                    QTimer::singleShot(duration, &loop, &QEventLoop::quit);
-                    loop.exec();
-                }
-            }
-            else
-            {
-                QString value = action.value(QStringLiteral("value")).toString();
-                const int key = seleniumKeyToQt(value.at(0).unicode());
-                bool keyUp = type == QLatin1String("keyUp");
-                if (key)
-                {
-                    value = QString();
+                qDebug() << Q_FUNC_INFO << "0 event finished";
+                QMetaObject::invokeMethod(event, "setCompleted", Qt::QueuedConnection);
+                event->deleteLater();
+                qDebug() << Q_FUNC_INFO << event << "1 event finished";
+            });
 
-                    if (key == Qt::Key_Control)
-                    {
-                        mods ^= Qt::ControlModifier;
-                    }
-                    else if (key == Qt::Key_Alt)
-                    {
-                        mods ^= Qt::AltModifier;
-                    }
-                    else if (key == Qt::Key_Shift)
-                    {
-                        mods ^= Qt::ShiftModifier;
-                    }
-                    else if (key == Qt::Key_Meta)
-                    {
-                        mods ^= Qt::MetaModifier;
-                    }
-                    else if (key >= Qt::Key_0 && key <= Qt::Key_9)
-                    {
-                        mods ^= Qt::KeypadModifier;
-                    }
-                }
-                if (keyUp)
-                {
-                    eventType = QKeyEvent::KeyRelease;
-                }
-
-                QKeyEvent event(eventType, key, mods, value);
-
-                emit keyEvent(event);
-            }
-        }
-
-        // mouse action
-        {
-            const auto& actionVar = mouseActions.at(i);
-            const QVariantMap action = actionVar.toMap();
-            qDebug() << action;
-            const QString type = action.value(QStringLiteral("type")).toString();
-            if (type == QLatin1String("pause"))
-            {
-                const int duration = action.value(QStringLiteral("duration"), "0").toInt();
-                if (duration > 0)
-                {
-                    QEventLoop loop;
-                    QTimer::singleShot(duration, &loop, &QEventLoop::quit);
-                    loop.exec();
-                }
-            }
-            else if (type == QLatin1String("pointerMove"))
-            {
-                int posX = action.value(QStringLiteral("x")).toInt();
-                int posY = action.value(QStringLiteral("y")).toInt();
-
-                if (action.contains(QStringLiteral("origin")))
-                {
-
-                    auto platform = QAEngine::instance()->getPlatform();
-                    auto& origin = action.value(QStringLiteral("origin"));
-                    QString itemId;
-                    QVariantMap originMap = origin.toMap();
-                    if (originMap.isEmpty())
-                    {
-                        itemId = origin.toString();
-                    }
-                    else
-                    {
-                        itemId = originMap.value(originMap.firstKey()).toString();
-                    }
-
-                    if (auto item = platform->getObject(itemId))
-                    {
-                        const auto point = platform->getAbsGeometry(item).center();
-                        posX = point.x();
-                        posY = point.y();
-                    }
-                }
-
-                if (!previousPoint.isNull())
-                {
-                    QPointF point(posX, posY);
-
-                    QVariantList action = {
-                        QVariantMap{
-                            {"action", "moveTo"},
-                            {
-                                "options",
-                                QVariantMap{
-                                    {"x", posX},
-                                    {"y", posY},
-                                    {"duration", 200},
-                                    {"steps", 20},
-                                },
-                            },
-                        },
-                    };
-
-                    performTouchAction(action, mods);
-                }
-
-                previousPoint = QPointF(posX, posY);
-            }
-            else if (type == QLatin1String("pointerDown"))
-            {
-                QVariantList action = {
-                    QVariantMap{
-                        {"action", "press"},
-                        {
-                            "options",
-                            QVariantMap{
-                                {"x", previousPoint.x()},
-                                {"y", previousPoint.y()},
-                            },
-                        },
-                    },
-                    QVariantMap{
-                        {"action", "wait"},
-                        {
-                            "options",
-                            QVariantMap{
-                                {"ms", 200},
-                            },
-                        },
-                    },
-                };
-
-                performTouchAction(action, mods);
-            }
-            else if (type == QLatin1String("pointerUp"))
-            {
-                QVariantList action = {
-                    QVariantMap{
-                        {"action", "release"},
-                        {
-                            "options",
-                            QVariantMap{
-                                {"x", previousPoint.x()},
-                                {"y", previousPoint.y()},
-                            },
-                        },
-                    },
-                };
-
-                performTouchAction(action, mods);
-
-                previousPoint = QPointF();
-            }
-        }
-    }
+    return event;
 }
 
 int QAKeyMouseEngine::getNextPointId()
@@ -598,7 +435,7 @@ QTouchDevice* QAKeyMouseEngine::getTouchDevice()
     return m_touchDevice;
 }
 
-void QAKeyMouseEngine::onPressed(const QPointF point, Qt::KeyboardModifiers mods)
+void QAKeyMouseEngine::onPressed(const QPointF point)
 {
     qCDebug(categoryKeyMouseEngine) << Q_FUNC_INFO << point;
     if (m_mode == TouchEventMode)
@@ -625,7 +462,7 @@ void QAKeyMouseEngine::onPressed(const QPointF point, Qt::KeyboardModifiers mods
             states |= Qt::TouchPointStationary;
         }
 
-        QTouchEvent te(type, m_touchDevice, mods, states, m_touchPoints.values());
+        QTouchEvent te(type, m_touchDevice, m_mods, states, m_touchPoints.values());
         te.setTimestamp(m_eta->elapsed());
 
         tp.setState(Qt::TouchPointStationary);
@@ -635,13 +472,15 @@ void QAKeyMouseEngine::onPressed(const QPointF point, Qt::KeyboardModifiers mods
     }
     else
     {
-        QMouseEvent me(QEvent::MouseButtonPress, point, Qt::LeftButton, Qt::LeftButton, mods);
+        Qt::MouseButton btn = Qt::LeftButton;
+        m_buttons |= btn;
+        QMouseEvent me(QEvent::MouseButtonPress, point, QAEngine::instance()->getPlatform()->mapToGlobal(point), btn, m_buttons, m_mods);
         me.setTimestamp(m_eta->elapsed());
         emit mouseEvent(me);
     }
 }
 
-void QAKeyMouseEngine::onMoved(const QPointF point, Qt::KeyboardModifiers mods)
+void QAKeyMouseEngine::onMoved(const QPointF point)
 {
     qCDebug(categoryKeyMouseEngine) << Q_FUNC_INFO << point;
     if (m_mode == TouchEventMode)
@@ -666,7 +505,7 @@ void QAKeyMouseEngine::onMoved(const QPointF point, Qt::KeyboardModifiers mods)
             states |= Qt::TouchPointStationary;
         }
 
-        QTouchEvent te(type, m_touchDevice, mods, states, m_touchPoints.values());
+        QTouchEvent te(type, m_touchDevice, m_mods, states, m_touchPoints.values());
         te.setTimestamp(m_eta->elapsed());
 
         tp.setState(Qt::TouchPointStationary);
@@ -676,13 +515,13 @@ void QAKeyMouseEngine::onMoved(const QPointF point, Qt::KeyboardModifiers mods)
     }
     else
     {
-        QMouseEvent me(QEvent::MouseMove, point, Qt::NoButton, Qt::LeftButton, mods);
+        QMouseEvent me(QEvent::MouseMove, point, QAEngine::instance()->getPlatform()->mapToGlobal(point), Qt::LeftButton, m_buttons, m_mods);
         me.setTimestamp(m_eta->elapsed());
         emit mouseEvent(me);
     }
 }
 
-void QAKeyMouseEngine::onReleased(const QPointF point, Qt::KeyboardModifiers mods)
+void QAKeyMouseEngine::onReleased(const QPointF point)
 {
     qCDebug(categoryKeyMouseEngine) << Q_FUNC_INFO << point;
     if (m_mode == TouchEventMode)
@@ -708,7 +547,7 @@ void QAKeyMouseEngine::onReleased(const QPointF point, Qt::KeyboardModifiers mod
             states |= Qt::TouchPointStationary;
         }
 
-        QTouchEvent te(type, m_touchDevice, mods, states, m_touchPoints.values());
+        QTouchEvent te(type, m_touchDevice, m_mods, states, m_touchPoints.values());
         te.setTimestamp(m_eta->elapsed());
 
         m_touchPoints.remove(sender());
@@ -717,7 +556,9 @@ void QAKeyMouseEngine::onReleased(const QPointF point, Qt::KeyboardModifiers mod
     }
     else
     {
-        QMouseEvent me(QEvent::MouseButtonRelease, point, Qt::LeftButton, Qt::NoButton, mods);
+        Qt::MouseButton btn = Qt::LeftButton;
+        m_buttons &= ~btn;
+        QMouseEvent me(QEvent::MouseButtonRelease, point, QAEngine::instance()->getPlatform()->mapToGlobal(point), btn, m_buttons, m_mods);
         me.setTimestamp(m_eta->elapsed());
         emit mouseEvent(me);
     }
@@ -739,13 +580,204 @@ void QAKeyMouseEngine::sendKeyRelease(const QChar& text, int key)
     emit keyEvent(event);
 }
 
-EventWorker::EventWorker(const QVariantList& actions,
-                         Qt::KeyboardModifiers mods,
-                         QAKeyMouseEngine* engine)
+void QAKeyMouseEngine::onKeyPressed(const QString &value)
+{
+    handleKey(value, false);
+}
+
+void QAKeyMouseEngine::onKeyReleased(const QString &value)
+{
+    handleKey(value, true);
+}
+
+void QAKeyMouseEngine::onMousePressed(const QPointF point, int button)
+{
+    qCDebug(categoryKeyMouseEngine) << Q_FUNC_INFO << point;
+    if (m_mode == TouchEventMode)
+    {
+        int pointId = getNextPointId();
+
+        QTouchEvent::TouchPoint tp(pointId);
+        tp.setState(Qt::TouchPointPressed);
+
+        QRectF rect(point.x() - 16, point.y() - 16, 32, 32);
+        tp.setRect(rect);
+        tp.setSceneRect(rect);
+        tp.setScreenRect(rect);
+        tp.setLastPos(point);
+        tp.setStartPos(point);
+        tp.setPressure(1);
+        m_touchPoints.insert(sender(), tp);
+
+        Qt::TouchPointStates states = tp.state();
+        QEvent::Type type = QEvent::TouchBegin;
+        if (m_touchPoints.size() > 1)
+        {
+            type = QEvent::TouchUpdate;
+            states |= Qt::TouchPointStationary;
+        }
+
+        QTouchEvent te(type, m_touchDevice, m_mods, states, m_touchPoints.values());
+        te.setTimestamp(m_eta->elapsed());
+
+        tp.setState(Qt::TouchPointStationary);
+        m_touchPoints.insert(sender(), tp);
+
+        emit touchEvent(te);
+    }
+    else
+    {
+        Qt::MouseButton btn = Qt::LeftButton;
+        if (button == 1)
+        {
+            btn = Qt::MiddleButton;
+        }
+        else if (button == 2)
+        {
+            btn = Qt::RightButton;
+        }
+        m_buttons |= btn;
+        QMouseEvent me(QEvent::MouseButtonPress, point, QAEngine::instance()->getPlatform()->mapToGlobal(point), btn, m_buttons, m_mods);
+        me.setTimestamp(m_eta->elapsed());
+        emit mouseEvent(me);
+    }
+}
+
+void QAKeyMouseEngine::onMouseReleased(const QPointF point, int button)
+{
+    qCDebug(categoryKeyMouseEngine) << Q_FUNC_INFO << point;
+    if (m_mode == TouchEventMode)
+    {
+        QTouchEvent::TouchPoint tp = m_touchPoints.value(sender());
+
+        tp.setState(Qt::TouchPointReleased);
+
+        QRectF rect(point.x() - 16, point.y() - 16, 32, 32);
+        tp.setRect(rect);
+        tp.setSceneRect(rect);
+        tp.setScreenRect(rect);
+        tp.setLastPos(tp.pos());
+        tp.setStartPos(point);
+        tp.setPressure(0);
+        m_touchPoints.insert(sender(), tp);
+
+        Qt::TouchPointStates states = tp.state();
+        QEvent::Type type = QEvent::TouchEnd;
+        if (m_touchPoints.size() > 1)
+        {
+            type = QEvent::TouchUpdate;
+            states |= Qt::TouchPointStationary;
+        }
+
+        QTouchEvent te(type, m_touchDevice, m_mods, states, m_touchPoints.values());
+        te.setTimestamp(m_eta->elapsed());
+
+        m_touchPoints.remove(sender());
+
+        emit touchEvent(te);
+    }
+    else
+    {
+        Qt::MouseButton btn = Qt::LeftButton;
+        if (button == 1)
+        {
+            btn = Qt::MiddleButton;
+        }
+        else if (button == 2)
+        {
+            btn = Qt::RightButton;
+        }
+        m_buttons &= ~btn;
+        QMouseEvent me(QEvent::MouseButtonRelease, point, QAEngine::instance()->getPlatform()->mapToGlobal(point), btn, m_buttons, m_mods);
+        me.setTimestamp(m_eta->elapsed());
+        emit mouseEvent(me);
+    }
+}
+
+void QAKeyMouseEngine::onMouseMoved(const QPointF point)
+{
+    qCDebug(categoryKeyMouseEngine) << Q_FUNC_INFO << point;
+    if (m_mode == TouchEventMode)
+    {
+        QTouchEvent::TouchPoint tp = m_touchPoints.value(sender());
+
+        tp.setState(Qt::TouchPointMoved);
+
+        QRectF rect(point.x() - 16, point.y() - 16, 32, 32);
+        tp.setRect(rect);
+        tp.setSceneRect(rect);
+        tp.setScreenRect(rect);
+        tp.setLastPos(tp.pos());
+        tp.setStartPos(point);
+        tp.setPressure(1);
+        m_touchPoints.insert(sender(), tp);
+
+        Qt::TouchPointStates states = tp.state();
+        QEvent::Type type = QEvent::TouchUpdate;
+        if (m_touchPoints.size() > 1)
+        {
+            states |= Qt::TouchPointStationary;
+        }
+
+        QTouchEvent te(type, m_touchDevice, m_mods, states, m_touchPoints.values());
+        te.setTimestamp(m_eta->elapsed());
+
+        tp.setState(Qt::TouchPointStationary);
+        m_touchPoints.insert(sender(), tp);
+
+        emit touchEvent(te);
+    }
+    else
+    {
+        QMouseEvent me(QEvent::MouseMove, point, QAEngine::instance()->getPlatform()->mapToGlobal(point), Qt::NoButton, m_buttons, m_mods);
+        me.setTimestamp(m_eta->elapsed());
+        emit mouseEvent(me);
+    }
+}
+
+void QAKeyMouseEngine::handleKey(const QString &value, bool keyUp)
+{
+    QEvent::Type eventType = QKeyEvent::KeyPress;
+    QString keyValue = value;
+    const int key = seleniumKeyToQt(value.at(0).unicode());
+    if (key)
+    {
+        keyValue = QString();
+
+        if (key == Qt::Key_Control)
+        {
+            m_mods ^= Qt::ControlModifier;
+        }
+        else if (key == Qt::Key_Alt)
+        {
+            m_mods ^= Qt::AltModifier;
+        }
+        else if (key == Qt::Key_Shift)
+        {
+            m_mods ^= Qt::ShiftModifier;
+        }
+        else if (key == Qt::Key_Meta)
+        {
+            m_mods ^= Qt::MetaModifier;
+        }
+        else if (key >= Qt::Key_0 && key <= Qt::Key_9)
+        {
+            m_mods ^= Qt::KeypadModifier;
+        }
+    }
+    if (keyUp)
+    {
+        eventType = QKeyEvent::KeyRelease;
+    }
+
+    QKeyEvent event(eventType, key, m_mods, keyValue);
+
+    emit keyEvent(event);
+}
+
+EventWorker::EventWorker(const QVariantList& actions)
     : QObject(nullptr)
     , m_actions(actions)
-    , m_engine(engine)
-    , m_mods(mods)
 {
 }
 
@@ -753,13 +785,24 @@ EventWorker::~EventWorker()
 {
 }
 
-EventWorker* EventWorker::PerformTouchAction(const QVariantList& actions,
-                                             Qt::KeyboardModifiers mods,
-                                             QAKeyMouseEngine* engine)
+EventWorker* EventWorker::PerformTouchAction(const QVariantList& actions)
 {
-    EventWorker* worker = new EventWorker(actions, mods, engine);
+    EventWorker* worker = new EventWorker(actions);
     QThread* thread = new QThread;
     connect(thread, &QThread::started, worker, &EventWorker::start);
+    connect(worker, &EventWorker::finished, thread, &QThread::quit);
+    connect(thread, &QThread::finished, worker, &EventWorker::deleteLater);
+    connect(thread, &QThread::finished, thread, &QThread::deleteLater);
+    worker->moveToThread(thread);
+    thread->start();
+    return worker;
+}
+
+EventWorker *EventWorker::PerformChainAction(const QVariantList &actions)
+{
+    EventWorker* worker = new EventWorker(actions);
+    QThread* thread = new QThread;
+    connect(thread, &QThread::started, worker, &EventWorker::startChain);
     connect(worker, &EventWorker::finished, thread, &QThread::quit);
     connect(thread, &QThread::finished, worker, &EventWorker::deleteLater);
     connect(thread, &QThread::finished, thread, &QThread::deleteLater);
@@ -797,7 +840,7 @@ void EventWorker::start()
                 if (auto item =
                         platform->getObject(options.value(QStringLiteral("element")).toString()))
                 {
-                    point = platform->getAbsGeometry(item).center();
+                    point = platform->getAbsPosition(item);
                 }
             }
 
@@ -897,38 +940,175 @@ void EventWorker::start()
     emit finished();
 }
 
+void EventWorker::startChain()
+{
+    QVariantList pointerArgs;
+    QVariantList keyArgs;
+
+    for (const QVariant& paramsVar : qAsConst(m_actions))
+    {
+        const QVariantMap param = paramsVar.toMap();
+        if (param.value(QStringLiteral("type")).toString() == QLatin1String("pointer"))
+        {
+            pointerArgs.append(param);
+        }
+        else if (param.value(QStringLiteral("type")).toString() == QLatin1String("key"))
+        {
+            keyArgs.append(param);
+        }
+    }
+
+    QVariantList keyActions = keyArgs.first().toMap().value(QStringLiteral("actions")).toList();
+    QVariantList mouseActions =
+        pointerArgs.first().toMap().value(QStringLiteral("actions")).toList();
+
+    qCDebug(categoryKeyMouseEngine) << Q_FUNC_INFO << keyActions;
+    qCDebug(categoryKeyMouseEngine) << Q_FUNC_INFO << mouseActions;
+
+    if (keyActions.size() != mouseActions.size())
+    {
+        qCWarning(categoryKeyMouseEngine)
+            << Q_FUNC_INFO << "Found two actions lists with mismatching size!";
+        emit finished();
+        return;
+    }
+
+    QPointF previousPoint;
+
+    for (int i = 0; i < keyActions.size(); i++)
+    {
+        // key action
+        {
+            const auto& actionVar = keyActions.at(i);
+            const QVariantMap action = actionVar.toMap();
+            const QString type = action.value(QStringLiteral("type")).toString();
+            if (type == QLatin1String("pause"))
+            {
+                const int duration = action.value(QStringLiteral("duration"), "0").toInt();
+                if (duration > 0)
+                {
+                    QEventLoop loop;
+                    QTimer::singleShot(duration, &loop, &QEventLoop::quit);
+                    loop.exec();
+                }
+            }
+            else
+            {
+                QString value = action.value(QStringLiteral("value")).toString();
+                bool keyUp = type == QLatin1String("keyUp");
+                if (keyUp)
+                {
+                    emit keyReleased(value);
+                }
+                else
+                {
+                    emit keyPressed(value);
+                }
+            }
+        }
+
+        // mouse action
+        {
+            const auto& actionVar = mouseActions.at(i);
+            const QVariantMap action = actionVar.toMap();
+            const QString type = action.value(QStringLiteral("type")).toString();
+            if (type == QLatin1String("pause"))
+            {
+                const int duration = action.value(QStringLiteral("duration"), "0").toInt();
+                if (duration > 0)
+                {
+                    QEventLoop loop;
+                    QTimer::singleShot(duration, &loop, &QEventLoop::quit);
+                    loop.exec();
+                }
+            }
+            else if (type == QLatin1String("pointerMove"))
+            {
+                int posX = action.value(QStringLiteral("x")).toInt();
+                int posY = action.value(QStringLiteral("y")).toInt();
+
+                if (action.contains(QStringLiteral("origin")))
+                {
+
+                    auto platform = QAEngine::instance()->getPlatform();
+                    auto& origin = action.value(QStringLiteral("origin"));
+                    QString itemId;
+                    QVariantMap originMap = origin.toMap();
+                    if (originMap.isEmpty())
+                    {
+                        itemId = origin.toString();
+                    }
+                    else
+                    {
+                        itemId = originMap.value(originMap.firstKey()).toString();
+                    }
+
+                    if (auto item = platform->getObject(itemId))
+                    {
+                        const auto point = platform->getAbsGeometry(item).center();
+                        qDebug() << Q_FUNC_INFO << item << point;
+                        posX = point.x();
+                        posY = point.y();
+                    }
+                }
+
+                QList<QPointF> movePoints;
+
+                if (previousPoint.isNull())
+                {
+                    movePoints.append(QPointF(posX, posY));
+                }
+                else
+                {
+                    qDebug() << Q_FUNC_INFO << previousPoint << QPointF(posX, posY);
+                    movePoints.append(previousPoint);
+                    movePoints.append(moveInterpolator(previousPoint, QPointF(posX, posY), 20));
+                }
+
+                for (const auto& point : movePoints)
+                {
+                    emit mouseMoved(point);
+                }
+
+                previousPoint = QPointF(posX, posY);
+            }
+            else if (type == QLatin1String("pointerDown"))
+            {
+                int button = action.value(QStringLiteral("button"), 0).toInt();
+                emit mousePressed(previousPoint, button);
+            }
+            else if (type == QLatin1String("pointerUp"))
+            {
+                int button = action.value(QStringLiteral("button"), 0).toInt();
+                emit mouseReleased(previousPoint, button);
+
+                previousPoint = QPointF();
+            }
+        }
+    }
+
+    emit finished();
+}
+
 void EventWorker::sendPress(const QPointF& point)
 {
     qCDebug(categoryKeyMouseEngine) << Q_FUNC_INFO << point;
 
-    emit pressed(point, m_mods);
+    emit pressed(point);
 }
 
 void EventWorker::sendRelease(const QPointF& point)
 {
     qCDebug(categoryKeyMouseEngine) << Q_FUNC_INFO << point;
 
-    emit released(point, m_mods);
-}
-
-void EventWorker::sendRelease(const QPointF& point, int delay)
-{
-    qCDebug(categoryKeyMouseEngine) << Q_FUNC_INFO << point << delay;
-
-    QEventLoop loop;
-    QTimer timer;
-    timer.setSingleShot(true);
-    connect(&timer, &QTimer::timeout, [this, point]() { sendRelease(point); });
-    connect(&timer, &QTimer::timeout, &loop, &QEventLoop::quit);
-    timer.start(delay);
-    loop.exec();
+    emit released(point);
 }
 
 void EventWorker::sendMove(const QPointF& point)
 {
     qCDebug(categoryKeyMouseEngine) << Q_FUNC_INFO << point;
 
-    emit moved(point, m_mods);
+    emit moved(point);
 }
 
 void EventWorker::sendMove(const QPointF& previousPoint,
@@ -977,4 +1157,36 @@ void EventWorker::sendMove(const QPointF& previousPoint,
         loop.exec();
     }
     sendMove(point);
+}
+
+QList<QPointF> EventWorker::moveInterpolator(const QPointF &previousPoint, const QPointF &point, int moveSteps)
+{
+    QList<QPointF> result;
+
+    float stepSize = 5.0f;
+
+    const float stepX = qAbs(point.x() - previousPoint.x()) / moveSteps;
+    const float stepY = qAbs(point.y() - previousPoint.y()) / moveSteps;
+
+    if (stepX > 0 && stepX < stepSize)
+    {
+        moveSteps = qAbs(qRound(point.x() - previousPoint.x())) / stepSize;
+    }
+    else if (stepY > 0 && stepY < stepSize)
+    {
+        moveSteps = qAbs(qRound(point.y() - previousPoint.y())) / stepSize;
+    }
+
+    auto* interpolator = QVariantAnimationPrivate::getInterpolator(QMetaType::QPointF);
+
+    QPointF pointA = previousPoint;
+    for (int currentMoveStep = 0; currentMoveStep < moveSteps; currentMoveStep++)
+    {
+        float progress = static_cast<float>(currentMoveStep) / moveSteps;
+        QPointF pointB = interpolator(&previousPoint, &point, progress).toPointF();
+        result.append(pointB);
+        pointA = pointB;
+    }
+    result.append(point);
+    return result;
 }

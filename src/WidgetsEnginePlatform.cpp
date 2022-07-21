@@ -36,6 +36,7 @@ namespace
 
 QList<QAction*> s_actions;
 QHash<QAction*, QWidget*> s_actionHash;
+QHash<QMenu*, QWidget*> s_menuHash;
 EventHandler* s_eventHandler = nullptr;
 
 static bool s_registerPlatform = []()
@@ -57,18 +58,42 @@ static bool s_registerPlatform = []()
 
 QList<QObject*> WidgetsEnginePlatform::childrenList(QObject* parentItem)
 {
+    if (parentItem == rootObject())
+    {
+        s_actionHash.clear();
+        s_menuHash.clear();
+    }
+
     QList<QObject*> result;
     QWidget* widget = qobject_cast<QWidget*>(parentItem);
     if (widget)
     {
         for (QAction* action : widget->actions())
         {
-            if (!s_actionHash.contains(action))
+            if (s_actionHash.contains(action))
+            {
+                if (s_actionHash.value(action) != widget)
+                {
+                    continue;
+                }
+            }
+            else
             {
                 s_actionHash.insert(action, widget);
             }
             if (action->menu() && action->menu() != widget)
             {
+                if (s_menuHash.contains(action->menu()))
+                {
+                    if (s_menuHash.value(action->menu()) != widget)
+                    {
+                        continue;
+                    }
+                }
+                else
+                {
+                    s_menuHash.insert(action->menu(), widget);
+                }
                 result.append(action->menu());
             }
             result.append(action);
@@ -76,6 +101,21 @@ QList<QObject*> WidgetsEnginePlatform::childrenList(QObject* parentItem)
     }
     for (QWidget* w : parentItem->findChildren<QWidget*>(QString(), Qt::FindDirectChildrenOnly))
     {
+        QMenu *m = qobject_cast<QMenu*>(w);
+        if (m)
+        {
+            if (s_menuHash.contains(m))
+            {
+                if (s_menuHash.value(m) != w)
+                {
+                    continue;
+                }
+            }
+            else
+            {
+                s_menuHash.insert(m, w);
+            }
+        }
         result.append(w);
     }
     return result;
@@ -98,6 +138,32 @@ QObject* WidgetsEnginePlatform::getParent(QObject* item)
 QWidget* WidgetsEnginePlatform::getItem(const QString& elementId)
 {
     return qobject_cast<QWidget*>(getObject(elementId));
+}
+
+QWidget *WidgetsEnginePlatform::rootWidget()
+{
+    return qobject_cast<QWidget*>(rootObject());
+}
+
+QPointF WidgetsEnginePlatform::mapToGlobal(const QPointF &point)
+{
+    return QPointF(m_rootWidget->mapToGlobal(point.toPoint()));
+}
+
+QObject *WidgetsEnginePlatform::rootObject()
+{
+    if (qApp->activePopupWidget())
+    {
+        return qApp->activePopupWidget();
+    }
+    else if (qApp->activeModalWidget())
+    {
+        return qApp->activeModalWidget();
+    }
+    else
+    {
+        return m_rootObject;
+    }
 }
 
 WidgetsEnginePlatform::WidgetsEnginePlatform(QWindow* window)
@@ -644,6 +710,7 @@ QRect WidgetsEnginePlatform::getActionGeometry(QAction* action)
         if (m)
         {
             QRect geometry = m->actionGeometry(action);
+            //geometry.translate(m_rootWidget->mapFromGlobal(m->pos()));
             geometry.translate(m_rootWidget->mapFromGlobal(m->pos()));
             return geometry;
         }
@@ -669,54 +736,40 @@ QPoint WidgetsEnginePlatform::getAbsPosition(QObject* item)
             return actionGeometry.topLeft();
         }
     }
-    QMenu* m = qobject_cast<QMenu*>(item);
-    if (m)
-    {
-        return m_rootWidget->mapFromGlobal(m->pos());
-    }
-
     QWidget* w = qobject_cast<QWidget*>(item);
     if (!w)
     {
         return QPoint();
     }
-
-    if (w == m_rootWidget)
+    if (w == qApp->activePopupWidget())
+    {
+        return m_rootWidget->mapFromGlobal(w->pos());
+    }
+    else if (w == m_rootWidget)
     {
         return QPoint();
     }
-    else
+    else if (qApp->activePopupWidget())
     {
-        return w->mapTo(m_rootWidget, QPoint(0, 0));
+        return m_rootWidget->mapFromGlobal(qApp->activePopupWidget()->mapToParent(w->pos()));
     }
+    return w->mapTo(m_rootWidget, QPoint(0, 0));
 }
 
 QPoint WidgetsEnginePlatform::getClickPosition(QObject *item)
 {
     auto pos = getAbsPosition(item);
-
-    QAction* a = qobject_cast<QAction*>(item);
-    if (a)
+    qDebug() << Q_FUNC_INFO << item << pos;
+    if (qApp->activePopupWidget())
     {
-        if (s_actionHash.contains(a))
-        {
-            QWidget* w = s_actionHash.value(a);
-            QMenu* m = qobject_cast<QMenu*>(w);
-            if (m)
-            {
-                pos.setX(pos.x() + m_rootWindow->frameMargins().left());
-                pos.setY(pos.y() + m_rootWindow->frameMargins().top());
-            }
-        }
+        pos = m_rootWidget->mapToGlobal(pos);
     }
-
+    qDebug() << Q_FUNC_INFO << item << pos;
     return pos;
 }
 
 QPoint WidgetsEnginePlatform::getPosition(QObject* item)
 {
-    qCDebug(categoryWidgetsEnginePlatform) << Q_FUNC_INFO << item;
-
     QWidget* w = qobject_cast<QWidget*>(item);
     if (!w)
     {
@@ -746,8 +799,6 @@ QSize WidgetsEnginePlatform::getSize(QObject* item)
 
 bool WidgetsEnginePlatform::isItemEnabled(QObject* item)
 {
-    qCDebug(categoryWidgetsEnginePlatform) << Q_FUNC_INFO << item;
-
     QWidget* w = qobject_cast<QWidget*>(item);
     if (!w)
     {
@@ -758,8 +809,6 @@ bool WidgetsEnginePlatform::isItemEnabled(QObject* item)
 
 bool WidgetsEnginePlatform::isItemVisible(QObject* item)
 {
-    qCDebug(categoryWidgetsEnginePlatform) << Q_FUNC_INFO << item;
-
     QWidget* w = qobject_cast<QWidget*>(item);
     if (!w)
     {

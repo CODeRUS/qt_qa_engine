@@ -36,6 +36,8 @@ public:
     virtual QRect getAbsGeometry(QObject* item) = 0;
     virtual bool isItemEnabled(QObject* item) = 0;
     virtual bool isItemVisible(QObject* item) = 0;
+    virtual void activateWindow() = 0;
+    virtual QPointF mapToGlobal(const QPointF &point) = 0;
 
 public slots:
     virtual void initialize() = 0;

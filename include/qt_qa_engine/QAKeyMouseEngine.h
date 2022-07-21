@@ -45,9 +45,9 @@ public:
     void pressEnter();
 
     QAPendingEvent* performMultiAction(const QVariantList& multiActions);
-    QAPendingEvent* performTouchAction(const QVariantList& actions, Qt::KeyboardModifiers mods = Qt::NoModifier);
+    QAPendingEvent* performTouchAction(const QVariantList& actions);
 
-    void performChainActions(const QVariantList& actions);
+    QAPendingEvent* performChainActions(const QVariantList& actions);
 
     int getNextPointId();
     qint64 getEta();
@@ -59,12 +59,21 @@ signals:
     void keyEvent(const QKeyEvent& event);
 
 private slots:
-    void onPressed(const QPointF point, Qt::KeyboardModifiers mods);
-    void onMoved(const QPointF point, Qt::KeyboardModifiers mods);
-    void onReleased(const QPointF point, Qt::KeyboardModifiers mods);
+    void onPressed(const QPointF point);
+    void onMoved(const QPointF point);
+    void onReleased(const QPointF point);
 
     void sendKeyPress(const QChar &text, int key = 0);
     void sendKeyRelease(const QChar &text, int key = 0);
+
+    void onKeyPressed(const QString &value);
+    void onKeyReleased(const QString &value);
+    void onMousePressed(const QPointF point, int button = 0);
+    void onMouseReleased(const QPointF point, int button = 0);
+    void onMouseMoved(const QPointF point);
+
+private:
+    void handleKey(const QString &value, bool keyUp);
 
 private:
     friend class TouchAction;
@@ -76,34 +85,46 @@ private:
 
     QTouchDevice* m_touchDevice;
     int m_tpId = 0;
+
+    Qt::KeyboardModifiers m_mods = Qt::NoModifier;
+    Qt::MouseButtons m_buttons = Qt::NoButton;
+    QPoint m_previousPoint;
 };
 
 class EventWorker : public QObject
 {
     Q_OBJECT
 public:
-    explicit EventWorker(const QVariantList& actions, Qt::KeyboardModifiers mods, QAKeyMouseEngine* engine);
+    explicit EventWorker(const QVariantList& actions);
     virtual ~EventWorker();
-    static EventWorker* PerformTouchAction(const QVariantList& actions, Qt::KeyboardModifiers mods, QAKeyMouseEngine* engine);
+    static EventWorker* PerformTouchAction(const QVariantList& actions);
+    static EventWorker* PerformChainAction(const QVariantList& actions);
 
 public slots:
     void start();
+    void startChain();
 
 private:
     void sendPress(const QPointF& point);
     void sendRelease(const QPointF& point);
-    void sendRelease(const QPointF& point, int delay);
     void sendMove(const QPointF& point);
     void sendMove(const QPointF& previousPoint, const QPointF& point, int duration, int moveSteps);
 
+    QList<QPointF> moveInterpolator(const QPointF& previousPoint, const QPointF& point, int moveSteps);
+
     QVariantList m_actions;
-    QAKeyMouseEngine* m_engine = nullptr;
-    Qt::KeyboardModifiers m_mods;
 
 signals:
-    void pressed(const QPointF point, Qt::KeyboardModifiers mods);
-    void moved(const QPointF point, Qt::KeyboardModifiers mods);
-    void released(const QPointF point, Qt::KeyboardModifiers mods);
+    void pressed(const QPointF point);
+    void moved(const QPointF point);
+    void released(const QPointF point);
+
+    void mousePressed(const QPointF point, int button = 0);
+    void mouseReleased(const QPointF point, int button = 0);
+    void mouseMoved(const QPointF point);
+
+    void keyPressed(const QString &value);
+    void keyReleased(const QString &value);
 
     void finished();
 };

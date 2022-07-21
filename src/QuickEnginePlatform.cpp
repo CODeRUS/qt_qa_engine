@@ -191,6 +191,11 @@ bool QuickEnginePlatform::isItemVisible(QObject* item)
     return q->isVisible();
 }
 
+QPointF QuickEnginePlatform::mapToGlobal(const QPointF &point)
+{
+    return m_rootQuickItem->mapToGlobal(point);
+}
+
 QVariant QuickEnginePlatform::executeJS(const QString& jsCode, QQuickItem* item)
 {
     qCDebug(categoryQuickEnginePlatform) << Q_FUNC_INFO << jsCode << item;

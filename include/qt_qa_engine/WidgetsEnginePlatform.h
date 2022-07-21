@@ -17,6 +17,9 @@ class WidgetsEnginePlatform : public GenericEnginePlatform
 public:
     explicit WidgetsEnginePlatform(QWindow* window);
     QWidget* getItem(const QString& elementId);
+    QObject* rootObject() override;
+    QWidget* rootWidget();
+    QPointF mapToGlobal(const QPointF &point) override;
 
 public slots:
     virtual void initialize() override;
