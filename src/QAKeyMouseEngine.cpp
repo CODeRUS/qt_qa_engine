@@ -840,7 +840,7 @@ void EventWorker::start()
                 if (auto item =
                         platform->getObject(options.value(QStringLiteral("element")).toString()))
                 {
-                    point = platform->getAbsPosition(item);
+                    point = platform->getAbsGeometry(item).center();
                 }
             }
 

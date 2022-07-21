@@ -104,28 +104,22 @@ QList<QObject*> WidgetsEnginePlatform::childrenList(QObject* parentItem)
     {
         for (QGraphicsItem *gi : gs->items())
         {
-            if (gi->isWidget() || gi->isPanel())
+            QGraphicsObject *gw = gi->toGraphicsObject();
+            if (gw)
             {
-                QGraphicsWidget *gw = static_cast<QGraphicsWidget*>(gi);
-                if (gw)
-                {
-                    result.append(gw);
-                }
+                result.append(gw);
             }
         }
     }
     QGraphicsWidget *gw = qobject_cast<QGraphicsWidget*>(parentItem);
     if (gw)
     {
-        for (QGraphicsItem *child : gw->childItems())
+        for (QGraphicsItem *gi : gw->childItems())
         {
-            if (child->isWidget() || child->isPanel())
+            QGraphicsObject *gw = gi->toGraphicsObject();
+            if (gw)
             {
-                QGraphicsWidget *gw = static_cast<QGraphicsWidget*>(child);
-                if (gw)
-                {
-                    result.append(gw);
-                }
+                result.append(gw);
             }
         }
     }
@@ -163,11 +157,11 @@ QObject* WidgetsEnginePlatform::getParent(QObject* item)
         return nullptr;
     }
     QWidget* w = qobject_cast<QWidget*>(item);
-    if (!w)
+    if (w)
     {
-        return item->parent();
+        return w->parentWidget();
     }
-    return w->parentWidget();
+    return item->parent();
 }
 
 QWidget* WidgetsEnginePlatform::getItem(const QString& elementId)
@@ -772,47 +766,45 @@ QPoint WidgetsEnginePlatform::getAbsPosition(QObject* item)
         }
     }
     QWidget* w = qobject_cast<QWidget*>(item);
-    if (!w)
+    if (w)
     {
-        return QPoint();
-    }
-    else if (w == m_rootWidget)
-    {
-        return QPoint();
-    }
-    else if (qApp->activePopupWidget())
-    {
-        auto&& popup = qApp->activePopupWidget();
-        QPoint pos = m_rootWidget->mapFromGlobal(popup->pos());
-        if (w != popup)
+        if (w == m_rootWidget)
         {
-            pos += w->mapTo(rootWidget(), QPoint(0, 0));
+            return QPoint();
         }
-        return pos;
+        if (qApp->activePopupWidget())
+        {
+            auto&& popup = qApp->activePopupWidget();
+            QPoint pos = m_rootWidget->mapFromGlobal(popup->pos());
+            if (w != popup)
+            {
+                pos += w->mapTo(rootWidget(), QPoint(0, 0));
+            }
+            return pos;
+        }
+        return w->mapTo(m_rootWidget, QPoint(0, 0));
     }
-    return w->mapTo(m_rootWidget, QPoint(0, 0));
-}
-
-QPoint WidgetsEnginePlatform::getClickPosition(QObject *item)
-{
-    auto pos = getAbsPosition(item);
-    qDebug() << Q_FUNC_INFO << item << pos;
-    if (qApp->activePopupWidget())
+    QGraphicsScene *gs = qobject_cast<QGraphicsScene*>(item);
+    if (gs)
     {
-        pos = m_rootWidget->mapToGlobal(pos);
+        return getAbsPosition(item->parent()) + gs->sceneRect().topLeft().toPoint();
     }
-    qDebug() << Q_FUNC_INFO << item << pos;
-    return pos;
+    QGraphicsObject *go = qobject_cast<QGraphicsObject*>(item);
+    if (go)
+    {
+        return getAbsPosition(go->scene()) + go->mapToScene(QPointF()).toPoint();
+    }
+    return QPoint();
 }
 
 QPoint WidgetsEnginePlatform::getPosition(QObject* item)
 {
     QWidget* w = qobject_cast<QWidget*>(item);
-    if (!w)
+    if (w)
     {
-        return QPoint();
+        return w->pos();
     }
-    return w->pos();
+    return QPoint();
 }
 
 QSize WidgetsEnginePlatform::getSize(QObject* item)
@@ -827,31 +819,55 @@ QSize WidgetsEnginePlatform::getSize(QObject* item)
         }
     }
     QWidget* w = qobject_cast<QWidget*>(item);
-    if (!w)
+    if (w)
     {
-        return QSize();
+        return w->size();
     }
-    return w->size();
+    QGraphicsScene *gs = qobject_cast<QGraphicsScene*>(item);
+    if (gs)
+    {
+        return gs->sceneRect().size().toSize();
+    }
+    QGraphicsObject *go = qobject_cast<QGraphicsObject*>(item);
+    if (go)
+    {
+        QGraphicsWidget *gw = qobject_cast<QGraphicsWidget*>(go);
+        if (gw)
+        {
+            return gw->geometry().size().toSize();
+        }
+    }
+    return QSize();
 }
 
 bool WidgetsEnginePlatform::isItemEnabled(QObject* item)
 {
     QWidget* w = qobject_cast<QWidget*>(item);
-    if (!w)
+    if (w)
     {
-        return false;
+        return w->isEnabled();
     }
-    return w->isEnabled();
+    QGraphicsObject *go = qobject_cast<QGraphicsObject*>(item);
+    if (go)
+    {
+        return go->isEnabled();
+    }
+    return false;
 }
 
 bool WidgetsEnginePlatform::isItemVisible(QObject* item)
 {
     QWidget* w = qobject_cast<QWidget*>(item);
-    if (!w)
+    if (w)
     {
-        return false;
+        return w->isVisible();
     }
-    return w->isVisible();
+    QGraphicsObject *go = qobject_cast<QGraphicsObject*>(item);
+    if (go)
+    {
+        return go->isVisible();
+    }
+    return false;
 }
 
 void WidgetsEnginePlatform::grabScreenshot(ITransportClient* socket,
@@ -911,8 +927,8 @@ void WidgetsEnginePlatform::pressAndHoldItem(QObject* qitem, int delay)
         return;
     }
 
-    const QPointF itemAbs = getAbsPosition(item);
-    pressAndHold(itemAbs.x() + item->width() / 2, itemAbs.y() + item->height() / 2, delay);
+    const QPoint itemCenter = getAbsGeometry(item).center();
+    pressAndHold(itemCenter.x(), itemCenter.y(), delay);
 }
 
 EventHandler::EventHandler(QObject* parent)
