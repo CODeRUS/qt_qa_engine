@@ -99,24 +99,59 @@ QList<QObject*> WidgetsEnginePlatform::childrenList(QObject* parentItem)
             result.append(action);
         }
     }
-    for (QWidget* w : parentItem->findChildren<QWidget*>(QString(), Qt::FindDirectChildrenOnly))
+    QGraphicsScene *gs = qobject_cast<QGraphicsScene*>(parentItem);
+    if (gs)
     {
-        QMenu *m = qobject_cast<QMenu*>(w);
-        if (m)
+        for (QGraphicsItem *gi : gs->items())
         {
-            if (s_menuHash.contains(m))
+            if (gi->isWidget() || gi->isPanel())
             {
-                if (s_menuHash.value(m) != w)
+                QGraphicsWidget *gw = static_cast<QGraphicsWidget*>(gi);
+                if (gw)
                 {
-                    continue;
+                    result.append(gw);
                 }
             }
-            else
+        }
+    }
+    QGraphicsWidget *gw = qobject_cast<QGraphicsWidget*>(parentItem);
+    if (gw)
+    {
+        for (QGraphicsItem *child : gw->childItems())
+        {
+            if (child->isWidget() || child->isPanel())
             {
-                s_menuHash.insert(m, w);
+                QGraphicsWidget *gw = static_cast<QGraphicsWidget*>(child);
+                if (gw)
+                {
+                    result.append(gw);
+                }
             }
         }
-        result.append(w);
+    }
+    for (QObject *o : parentItem->children())
+//    for (QWidget* w : parentItem->findChildren<QWidget*>(QString(), Qt::FindDirectChildrenOnly))
+    {
+        QWidget *w = qobject_cast<QWidget*>(o);
+        if (w)
+        {
+            QMenu *m = qobject_cast<QMenu*>(w);
+            if (m)
+            {
+                if (s_menuHash.contains(m))
+                {
+                    if (s_menuHash.value(m) != w)
+                    {
+                        continue;
+                    }
+                }
+                else
+                {
+                    s_menuHash.insert(m, w);
+                }
+            }
+        }
+        result.append(o);
     }
     return result;
 }
