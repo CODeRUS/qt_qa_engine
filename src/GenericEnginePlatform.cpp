@@ -507,24 +507,14 @@ QJsonObject GenericEnginePlatform::recursiveDumpTree(QObject* rootItem, int dept
 
 bool GenericEnginePlatform::recursiveDumpXml(QXmlStreamWriter* writer, QObject* rootItem, int depth)
 {
-    auto visible = rootItem->property("visible");
-    if (visible.isValid() && !visible.toBool())
-    {
-        return false;
-    }
-
-    const QRect abs = getAbsGeometry(rootItem);
-    const QRect rootAbs = getAbsGeometry(m_rootObject);
-    if (!rootAbs.intersects(abs))
-    {
-        return false;
-    }
-
     const QString className = getClassName(rootItem);
     writer->writeStartElement(className);
 
     const QString id = uniqueId(rootItem);
     writer->writeAttribute(QStringLiteral("id"), id);
+
+    const QRect abs = getAbsGeometry(rootItem);
+    const QRect rootAbs = getAbsGeometry(m_rootObject);
 
     const QString bounds = QString("[%1,%2][%3,%4]")
                                .arg(abs.topLeft().x())
