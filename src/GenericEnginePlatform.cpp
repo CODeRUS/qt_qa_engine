@@ -58,11 +58,11 @@ void GenericEnginePlatform::socketReply(ITransportClient* socket, const QVariant
 {
     QByteArray data;
     {
-    QJsonObject reply;
-    reply.insert(QStringLiteral("status"), status);
-    reply.insert(QStringLiteral("value"), QJsonValue::fromVariant(value));
+        QJsonObject reply;
+        reply.insert(QStringLiteral("status"), status);
+        reply.insert(QStringLiteral("value"), QJsonValue::fromVariant(value));
 
-    data = QJsonDocument(reply).toJson(QJsonDocument::Compact);
+        data = QJsonDocument(reply).toJson(QJsonDocument::Compact);
     }
     qCDebug(categoryGenericEnginePlatform) << Q_FUNC_INFO << socket << data.size() << "Reply is:";
 //    qCDebug(categoryGenericEnginePlatformRaw).noquote() << data;
@@ -593,10 +593,10 @@ bool GenericEnginePlatform::recursiveDumpXml(QXmlStreamWriter* writer, QObject* 
 
 void GenericEnginePlatform::clickItem(QObject* item)
 {
-    const QRect itemAbs = getAbsGeometry(item);
-    qCDebug(categoryGenericEnginePlatform) << Q_FUNC_INFO << item << itemAbs;
+    const QPoint clickPos = getClickPosition(item);
+    qCDebug(categoryGenericEnginePlatform) << Q_FUNC_INFO << item << clickPos;
 
-    clickPoint(itemAbs.center().x(), itemAbs.center().y());
+    clickPoint(clickPos.x(), clickPos.y());
 }
 
 QString GenericEnginePlatform::getClassName(QObject* item)
@@ -1019,9 +1019,7 @@ void GenericEnginePlatform::backgroundCommand(ITransportClient* socket, qlonglon
         connect(&timer, &QTimer::timeout, &loop, &QEventLoop::quit);
         timer.start(seconds * 1000);
         loop.exec();
-        m_rootWindow->raise();
-        m_rootWindow->requestActivate();
-        m_rootWindow->setWindowState(Qt::WindowState::WindowActive);
+        activateWindow();
     }
 
     socketReply(socket, QString());

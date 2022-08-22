@@ -20,6 +20,7 @@ public:
     QObject* rootObject() override;
     QWidget* rootWidget();
     QPointF mapToGlobal(const QPointF &point) override;
+    void removeItem(QObject* o) override;
 
 public slots:
     virtual void initialize() override;

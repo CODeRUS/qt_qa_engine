@@ -30,12 +30,13 @@
 #include <QLoggingCategory>
 
 Q_LOGGING_CATEGORY(categoryWidgetsEnginePlatform, "autoqa.qaengine.platform.widgets", QtWarningMsg)
+Q_LOGGING_CATEGORY(categoryWidgetsEnginePlatformFind, "autoqa.qaengine.platform.widgets.find", QtWarningMsg)
 
 namespace
 {
 
 QList<QAction*> s_actions;
-QHash<QAction*, QWidget*> s_actionHash;
+QHash<QAction*, QSet<QWidget*> > s_actionHash;
 QHash<QMenu*, QWidget*> s_menuHash;
 EventHandler* s_eventHandler = nullptr;
 
@@ -70,17 +71,7 @@ QList<QObject*> WidgetsEnginePlatform::childrenList(QObject* parentItem)
     {
         for (QAction* action : widget->actions())
         {
-            if (s_actionHash.contains(action))
-            {
-                if (s_actionHash.value(action) != widget)
-                {
-                    continue;
-                }
-            }
-            else
-            {
-                s_actionHash.insert(action, widget);
-            }
+            s_actionHash[action].insert(widget);
             if (action->menu() && action->menu() != widget)
             {
                 if (s_menuHash.contains(action->menu()))
@@ -124,7 +115,6 @@ QList<QObject*> WidgetsEnginePlatform::childrenList(QObject* parentItem)
         }
     }
     for (QObject *o : parentItem->children())
-//    for (QWidget* w : parentItem->findChildren<QWidget*>(QString(), Qt::FindDirectChildrenOnly))
     {
         QWidget *w = qobject_cast<QWidget*>(o);
         if (w)
@@ -177,6 +167,47 @@ QWidget *WidgetsEnginePlatform::rootWidget()
 QPointF WidgetsEnginePlatform::mapToGlobal(const QPointF &point)
 {
     return QPointF(m_rootWidget->mapToGlobal(point.toPoint()));
+}
+
+
+void WidgetsEnginePlatform::removeItem(QObject* o)
+{
+    GenericEnginePlatform::removeItem(o);
+
+    {
+        QHash<QAction*, QSet<QWidget*> >::iterator i = s_actionHash.begin();
+        while (i != s_actionHash.end())
+        {
+            if (i.value().contains(reinterpret_cast<QWidget*>(o))) {
+                i.value().remove(reinterpret_cast<QWidget*>(o));
+            }
+            if (i.key() == o)
+            {
+                i = s_actionHash.erase(i);
+                break;
+            }
+            else
+            {
+                ++i;
+            }
+        }
+    }
+
+    {
+        QHash<QMenu*, QWidget*>::iterator i = s_menuHash.begin();
+        while (i != s_menuHash.end())
+        {
+            if (i.value() == o || i.key() == o)
+            {
+                i = s_menuHash.erase(i);
+                break;
+            }
+            else
+            {
+                ++i;
+            }
+        }
+    }
 }
 
 QObject *WidgetsEnginePlatform::rootObject()
@@ -732,24 +763,29 @@ QStringList WidgetsEnginePlatform::recursiveDumpModel(QAbstractItemModel* model,
 
 QRect WidgetsEnginePlatform::getActionGeometry(QAction* action)
 {
-    if (s_actionHash.contains(action))
-    {
-        QWidget* w = s_actionHash.value(action);
-        QMenu* m = qobject_cast<QMenu*>(w);
-        if (m)
-        {
-            QRect geometry = m->actionGeometry(action);
-            //geometry.translate(m_rootWidget->mapFromGlobal(m->pos()));
-            geometry.translate(m_rootWidget->mapFromGlobal(m->pos()));
-            return geometry;
-        }
-    }
     if (m_mainWindow && m_mainWindow->menuBar() &&
         m_mainWindow->menuBar()->actions().contains(action))
     {
         QRect geometry = m_mainWindow->menuBar()->actionGeometry(action);
         geometry.translate(m_mainWindow->menuBar()->pos());
         return geometry;
+    }
+    if (s_actionHash.contains(action))
+    {
+        for (QWidget* w : s_actionHash.value(action))
+        {
+            if (w->isVisible())
+            {
+                QMenu* m = qobject_cast<QMenu*>(w);
+                if (m)
+                {
+                    QRect geometry = m->actionGeometry(action);
+                    //geometry.translate(m_rootWidget->mapFromGlobal(m->pos()));
+                    geometry.translate(m_rootWidget->mapFromGlobal(m->pos()));
+                    return geometry;
+                }
+            }
+        }
     }
     return {};
 }
@@ -760,7 +796,7 @@ QPoint WidgetsEnginePlatform::getAbsPosition(QObject* item)
     if (a)
     {
         auto actionGeometry = getActionGeometry(a);
-        if (!actionGeometry.isEmpty())
+        if (actionGeometry.isValid())
         {
             return actionGeometry.topLeft();
         }
@@ -772,13 +808,12 @@ QPoint WidgetsEnginePlatform::getAbsPosition(QObject* item)
         {
             return QPoint();
         }
-        if (qApp->activePopupWidget())
+        if (auto* popup = qApp->activePopupWidget())
         {
-            auto&& popup = qApp->activePopupWidget();
             QPoint pos = m_rootWidget->mapFromGlobal(popup->pos());
-            if (w != popup)
+            if (w != popup && w->isVisible())
             {
-                pos += w->mapTo(rootWidget(), QPoint(0, 0));
+                pos += w->mapTo(popup, QPoint(0, 0));
             }
             return pos;
         }
