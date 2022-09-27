@@ -514,7 +514,6 @@ bool GenericEnginePlatform::recursiveDumpXml(QXmlStreamWriter* writer, QObject* 
     writer->writeAttribute(QStringLiteral("id"), id);
 
     const QRect abs = getAbsGeometry(rootItem);
-    const QRect rootAbs = getAbsGeometry(m_rootObject);
 
     const QString bounds = QString("[%1,%2][%3,%4]")
                                .arg(abs.topLeft().x())
@@ -891,7 +890,7 @@ void GenericEnginePlatform::onMouseEvent(const QMouseEvent& event)
                                              event.localPos(),
                                              event.screenPos(),
                                              event.buttons(),
-#if QT_VERSION >= QT_VERSION_CHECK(5, 7, 0)
+#if QT_VERSION >= QT_VERSION_CHECK(5, 14, 0)
                                              event.button(),
                                              event.type(),
 #endif
@@ -1932,5 +1931,23 @@ void GenericEnginePlatform::executeCommand_app_installFileLogger(ITransportClien
         qInstallMessageHandler(fileHandler);
         fileLoggerInstalled = true;
     }
+    socketReply(socket, QString());
+}
+
+void GenericEnginePlatform::executeCommand_app_click(ITransportClient *socket, double mousex, double mousey)
+{
+    clickPoint(mousex, mousey);
+    socketReply(socket, QString());
+}
+
+void GenericEnginePlatform::executeCommand_app_pressAndHold(ITransportClient *socket, double mousex, double mousey)
+{
+    pressAndHold(mousex, mousey, 1500);
+    socketReply(socket, QString());
+}
+
+void GenericEnginePlatform::executeCommand_app_move(ITransportClient *socket, double fromx, double fromy, double tox, double toy)
+{
+    mouseMove(fromx, fromy, tox, toy);
     socketReply(socket, QString());
 }

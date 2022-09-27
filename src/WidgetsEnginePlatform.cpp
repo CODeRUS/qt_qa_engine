@@ -921,12 +921,14 @@ void WidgetsEnginePlatform::grabScreenshot(ITransportClient* socket,
     QBuffer buffer(&arr);
     QPixmap pix;
 
+#if QT_VERSION >= QT_VERSION_CHECK(5, 14, 0)
     if (w == m_rootWidget)
     {
         pix = w->screen()->grabWindow(
             0, m_rootWindow->x(), m_rootWindow->y(), m_rootWindow->width(), m_rootWindow->height());
     }
     else
+#endif
     {
         pix = w->grab();
     }

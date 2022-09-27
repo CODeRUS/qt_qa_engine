@@ -747,7 +747,15 @@ void QAKeyMouseEngine::onMouseWheeled(const QPointF &delta, const QPointF &point
     else
     {
         QPoint globalPos = QAEngine::instance()->getPlatform()->mapToGlobal(point).toPoint();
-        QWheelEvent we(point, globalPos, QPoint(), delta.toPoint(), m_buttons, m_mods, Qt::NoScrollPhase, false);
+        QWheelEvent we(point,
+                       globalPos,
+                       QPoint(),
+                       delta.toPoint(),
+                       0,
+                       Qt::Vertical,
+                       m_buttons,
+                       m_mods
+                       );
         we.setTimestamp(m_eta->elapsed());
         emit wheelEvent(we);
     }
@@ -1135,7 +1143,6 @@ void EventWorker::startChain()
             const int deltaY = action.value(QStringLiteral("deltaY"), 0).toInt();
 
             QObject *item = QAEngine::instance()->getPlatform()->rootObject();
-            QPointF point = previousPoint;
 
             if (origin == QLatin1String("viewport"))
             {
@@ -1186,13 +1193,11 @@ void EventWorker::sendMove(const QPointF& previousPoint,
     const float stepX = qAbs(point.x() - previousPoint.x()) / moveSteps;
     const float stepY = qAbs(point.y() - previousPoint.y()) / moveSteps;
 
-    if (stepX > 0 && stepX < stepSize)
+    if (stepX > 0 && stepX < stepSize && stepY > 0 && stepY < stepSize)
     {
-        moveSteps = qAbs(qRound(point.x() - previousPoint.x())) / stepSize;
-    }
-    else if (stepY > 0 && stepY < stepSize)
-    {
-        moveSteps = qAbs(qRound(point.y() - previousPoint.y())) / stepSize;
+        int moveStepsX = qAbs(qRound(point.x() - previousPoint.x())) / stepSize;
+        int moveStepsY = qAbs(qRound(point.y() - previousPoint.y())) / stepSize;
+        moveSteps = qMax(moveStepsX, moveStepsY);
     }
 
     auto* interpolator = QVariantAnimationPrivate::getInterpolator(QMetaType::QPointF);
