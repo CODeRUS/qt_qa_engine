@@ -974,6 +974,15 @@ void GenericEnginePlatform::closeAppCommand(ITransportClient* socket, const QStr
     qApp->quit();
 }
 
+void GenericEnginePlatform::closeWindowCommand(ITransportClient *socket)
+{
+    qCDebug(categoryGenericEnginePlatform) << Q_FUNC_INFO << socket;
+
+    m_rootWindow->close();
+
+    socketReply(socket, QString());
+}
+
 void GenericEnginePlatform::queryAppStateCommand(ITransportClient* socket, const QString& appName)
 {
     qCDebug(categoryGenericEnginePlatform) << Q_FUNC_INFO << socket << appName;

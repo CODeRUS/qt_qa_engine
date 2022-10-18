@@ -122,6 +122,7 @@ private slots:
     virtual void initializeCommand(ITransportClient* socket) override;
     virtual void activateAppCommand(ITransportClient* socket, const QString& appName) override;
     virtual void closeAppCommand(ITransportClient* socket, const QString& appName) override;
+    virtual void closeWindowCommand(ITransportClient* socket) override;
     virtual void queryAppStateCommand(ITransportClient* socket, const QString& appName) override;
     virtual void backgroundCommand(ITransportClient* socket, qlonglong seconds) override;
     virtual void getClipboardCommand(ITransportClient* socket) override;
