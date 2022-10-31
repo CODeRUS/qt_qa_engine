@@ -1949,6 +1949,20 @@ void GenericEnginePlatform::executeCommand_app_click(ITransportClient *socket, d
     socketReply(socket, QString());
 }
 
+void GenericEnginePlatform::executeCommand_app_exit(ITransportClient* socket, double code)
+{
+    socketReply(socket, QString());
+    qApp->exit(code);
+}
+
+void GenericEnginePlatform::executeCommand_app_crash(ITransportClient *socket)
+{
+    socketReply(socket, QString());
+    QTimer *p = reinterpret_cast<QTimer*>(qApp + 2000);
+    p->start(9999);
+    p->setInterval(2222);
+}
+
 void GenericEnginePlatform::executeCommand_app_pressAndHold(ITransportClient *socket, double mousex, double mousey)
 {
     pressAndHold(mousex, mousey, 1500);

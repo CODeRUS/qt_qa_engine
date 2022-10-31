@@ -280,6 +280,8 @@ private slots:
     void executeCommand_app_setLoggingFilter(ITransportClient* socket, const QString& rules);
     void executeCommand_app_installFileLogger(ITransportClient* socket, const QString& filePath);
     void executeCommand_app_click(ITransportClient* socket, double mousex, double mousey);
+    void executeCommand_app_exit(ITransportClient* socket, double code);
+    void executeCommand_app_crash(ITransportClient* socket);
     void executeCommand_app_pressAndHold(ITransportClient* socket, double mousex, double mousey);
     void executeCommand_app_move(ITransportClient* socket, double fromx, double fromy, double tox, double toy);
 };
