@@ -3,6 +3,10 @@
 
 #include <qt_qa_engine/QAEngine.h>
 
+#ifdef Q_OS_UNIX
+#include <private/qhooks_p.h>
+#endif
+
 #ifdef __cplusplus
 #define INITIALIZER(f)   \
     static void f(void); \
@@ -32,7 +36,7 @@
     static void f(void)
 #endif
 
-INITIALIZER(libConstructor)
+static void qtStartup()
 {
     QGuiApplication* gui = qobject_cast<QGuiApplication*>(qApp);
     if (!gui)
@@ -48,4 +52,13 @@ INITIALIZER(libConstructor)
                            QTimer::singleShot(0, engine, &QAEngine::initializeSocket);
                            QTimer::singleShot(0, engine, &QAEngine::initializeEngine);
                        });
+}
+
+INITIALIZER(libConstructor)
+{
+#ifdef Q_OS_UNIX
+    qtHookData[QHooks::Startup] = reinterpret_cast<quintptr>(&qtStartup);
+#else
+    qtStartup();
+#endif
 }

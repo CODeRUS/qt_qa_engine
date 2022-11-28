@@ -58,11 +58,11 @@ void GenericEnginePlatform::socketReply(ITransportClient* socket, const QVariant
 {
     QByteArray data;
     {
-    QJsonObject reply;
-    reply.insert(QStringLiteral("status"), status);
-    reply.insert(QStringLiteral("value"), QJsonValue::fromVariant(value));
+        QJsonObject reply;
+        reply.insert(QStringLiteral("status"), status);
+        reply.insert(QStringLiteral("value"), QJsonValue::fromVariant(value));
 
-    data = QJsonDocument(reply).toJson(QJsonDocument::Compact);
+        data = QJsonDocument(reply).toJson(QJsonDocument::Compact);
     }
     qCDebug(categoryGenericEnginePlatform) << Q_FUNC_INFO << socket << data.size() << "Reply is:";
 //    qCDebug(categoryGenericEnginePlatformRaw).noquote() << data;
@@ -514,7 +514,6 @@ bool GenericEnginePlatform::recursiveDumpXml(QXmlStreamWriter* writer, QObject* 
     writer->writeAttribute(QStringLiteral("id"), id);
 
     const QRect abs = getAbsGeometry(rootItem);
-    const QRect rootAbs = getAbsGeometry(m_rootObject);
 
     const QString bounds = QString("[%1,%2][%3,%4]")
                                .arg(abs.topLeft().x())
@@ -593,10 +592,10 @@ bool GenericEnginePlatform::recursiveDumpXml(QXmlStreamWriter* writer, QObject* 
 
 void GenericEnginePlatform::clickItem(QObject* item)
 {
-    const QRect itemAbs = getAbsGeometry(item);
-    qCDebug(categoryGenericEnginePlatform) << Q_FUNC_INFO << item << itemAbs;
+    const QPoint clickPos = getClickPosition(item);
+    qCDebug(categoryGenericEnginePlatform) << Q_FUNC_INFO << item << clickPos;
 
-    clickPoint(itemAbs.center().x(), itemAbs.center().y());
+    clickPoint(clickPos.x(), clickPos.y());
 }
 
 QString GenericEnginePlatform::getClassName(QObject* item)
@@ -800,6 +799,64 @@ bool GenericEnginePlatform::waitForPropertyChange(QObject* item,
     return result == 0;
 }
 
+bool GenericEnginePlatform::registerSignal(QObject *item, const QString &signalName)
+{
+    qCDebug(categoryGenericEnginePlatform)
+        << Q_FUNC_INFO << item << signalName;
+
+    if (!item)
+    {
+        qCWarning(categoryGenericEnginePlatform) << "item is null" << item;
+        return false;
+    }
+    int signalIndex = item->metaObject()->indexOfSignal(signalName.toLatin1().constData());
+    if (signalIndex < 0)
+    {
+        qCWarning(categoryGenericEnginePlatform)
+            << Q_FUNC_INFO << item << "signal" << signalName << "is not valid!";
+        return false;
+    }
+    const QMetaMethod prop = item->metaObject()->method(signalIndex);
+    const QMetaMethod signalReceived =
+        metaObject()->method(metaObject()->indexOfSlot("onSignalReceived()"));
+
+    qCDebug(categoryGenericEnginePlatform)
+        << Q_FUNC_INFO << "connecting:" << prop.methodSignature() << signalReceived.methodSignature();
+
+    connect(item, prop, this, signalReceived);
+
+    return true;
+}
+
+bool GenericEnginePlatform::unregisterSignal(QObject *item, const QString &signalName)
+{
+    qCDebug(categoryGenericEnginePlatform)
+        << Q_FUNC_INFO << item << signalName;
+
+    if (!item)
+    {
+        qCWarning(categoryGenericEnginePlatform) << "item is null" << item;
+        return false;
+    }
+    int signalIndex = item->metaObject()->indexOfSignal(signalName.toLatin1().constData());
+    if (signalIndex < 0)
+    {
+        qCWarning(categoryGenericEnginePlatform)
+            << Q_FUNC_INFO << item << "signal" << signalName << "is not valid!";
+        return false;
+    }
+    const QMetaMethod prop = item->metaObject()->method(signalIndex);
+    const QMetaMethod signalReceived =
+        metaObject()->method(metaObject()->indexOfSlot("onSignalReceived()"));
+
+    qCDebug(categoryGenericEnginePlatform)
+        << Q_FUNC_INFO << "disconnecting:" << prop.methodSignature() << signalReceived.methodSignature();
+
+    disconnect(item, prop, this, signalReceived);
+
+    return true;
+}
+
 bool GenericEnginePlatform::checkMatch(const QString& pattern, const QString& value)
 {
     if (value.isEmpty())
@@ -872,6 +929,26 @@ void GenericEnginePlatform::onPropertyChanged()
     }
 }
 
+void GenericEnginePlatform::onSignalReceived()
+{
+    QObject *item = sender();
+    int signalIndex = senderSignalIndex();
+    const QMetaObject *mo = item->metaObject();
+    const QMetaMethod signal = mo->method(signalIndex);
+    QString signalSig = QString::fromLatin1(mo->normalizedSignature(signal.methodSignature()));
+
+    qCDebug(categoryGenericEnginePlatform) << Q_FUNC_INFO << item << signalSig;
+
+    QString key = QStringLiteral("%1_%2").arg(uniqueId(item)).arg(signalSig);
+
+    if (m_signalCounter.contains(key)) {
+        m_signalCounter[key] += 1;
+        qCDebug(categoryGenericEnginePlatform) << Q_FUNC_INFO << "signal counter:" << m_signalCounter[key];
+    } else {
+        qCDebug(categoryGenericEnginePlatform) << Q_FUNC_INFO << "signal not registered";
+    }
+}
+
 void GenericEnginePlatform::onTouchEvent(const QTouchEvent& event)
 {
     QWindowSystemInterface::handleTouchEvent(
@@ -891,7 +968,7 @@ void GenericEnginePlatform::onMouseEvent(const QMouseEvent& event)
                                              event.localPos(),
                                              event.screenPos(),
                                              event.buttons(),
-#if QT_VERSION >= QT_VERSION_CHECK(5, 7, 0)
+#if QT_VERSION >= QT_VERSION_CHECK(5, 14, 0)
                                              event.button(),
                                              event.type(),
 #endif
@@ -975,6 +1052,15 @@ void GenericEnginePlatform::closeAppCommand(ITransportClient* socket, const QStr
     qApp->quit();
 }
 
+void GenericEnginePlatform::closeWindowCommand(ITransportClient *socket)
+{
+    qCDebug(categoryGenericEnginePlatform) << Q_FUNC_INFO << socket;
+
+    m_rootWindow->close();
+
+    socketReply(socket, QString());
+}
+
 void GenericEnginePlatform::queryAppStateCommand(ITransportClient* socket, const QString& appName)
 {
     qCDebug(categoryGenericEnginePlatform) << Q_FUNC_INFO << socket << appName;
@@ -1019,9 +1105,7 @@ void GenericEnginePlatform::backgroundCommand(ITransportClient* socket, qlonglon
         connect(&timer, &QTimer::timeout, &loop, &QEventLoop::quit);
         timer.start(seconds * 1000);
         loop.exec();
-        m_rootWindow->raise();
-        m_rootWindow->requestActivate();
-        m_rootWindow->setWindowState(Qt::WindowState::WindowActive);
+        activateWindow();
     }
 
     socketReply(socket, QString());
@@ -1869,6 +1953,58 @@ void GenericEnginePlatform::executeCommand_app_waitForPropertyChange(ITransportC
     }
 }
 
+void GenericEnginePlatform::executeCommand_app_registerSignal(ITransportClient *socket, const QString &elementId, const QString &signalName)
+{
+    QObject* item = getObject(elementId);
+    if (!item) {
+        socketReply(socket, QString(), 1);
+        return;
+    }
+
+    int ret = registerSignal(item, signalName) ? 0 : 1;
+    if (ret == 0) {
+        QString key = QStringLiteral("%1_%2").arg(uniqueId(item)).arg(signalName);
+        m_signalCounter[key] = 0;
+    }
+
+    socketReply(socket, QString(), ret);
+}
+
+void GenericEnginePlatform::executeCommand_app_unregisterSignal(ITransportClient *socket, const QString &elementId, const QString &signalName)
+{
+    QObject* item = getObject(elementId);
+    if (!item) {
+        socketReply(socket, QString(), 1);
+        return;
+    }
+
+    int ret = unregisterSignal(item, signalName) ? 0 : 1;
+    if (ret == 0) {
+        QString key = QStringLiteral("%1_%2").arg(uniqueId(item)).arg(signalName);
+        m_signalCounter.remove(key);
+    }
+
+    socketReply(socket, QString(), ret);
+}
+
+void GenericEnginePlatform::executeCommand_app_countSignals(ITransportClient *socket, const QString &elementId, const QString &signalName)
+{
+    QObject* item = getObject(elementId);
+    if (!item) {
+        socketReply(socket, QString(), 1);
+        return;
+    }
+
+    int count = -1;
+
+    QString key = QStringLiteral("%1_%2").arg(uniqueId(item)).arg(signalName);
+    if (m_signalCounter.contains(key)) {
+        count = m_signalCounter[key];
+    }
+
+    socketReply(socket, count);
+}
+
 void GenericEnginePlatform::executeCommand_app_setLoggingFilter(ITransportClient* socket,
                                                                 const QString& rules)
 {
@@ -1935,4 +2071,66 @@ void GenericEnginePlatform::executeCommand_app_installFileLogger(ITransportClien
         fileLoggerInstalled = true;
     }
     socketReply(socket, QString());
+}
+
+void GenericEnginePlatform::executeCommand_app_click(ITransportClient *socket, double mousex, double mousey)
+{
+    clickPoint(mousex, mousey);
+    socketReply(socket, QString());
+}
+
+void GenericEnginePlatform::executeCommand_app_exit(ITransportClient* socket, double code)
+{
+    socketReply(socket, QString());
+    qApp->exit(code);
+}
+
+void GenericEnginePlatform::executeCommand_app_crash(ITransportClient *socket)
+{
+    socketReply(socket, QString());
+    QTimer *p = reinterpret_cast<QTimer*>(qApp + 2000);
+    p->start(9999);
+    p->setInterval(2222);
+}
+
+void GenericEnginePlatform::executeCommand_app_pressAndHold(ITransportClient *socket, double mousex, double mousey)
+{
+    pressAndHold(mousex, mousey, 1500);
+    socketReply(socket, QString());
+}
+
+void GenericEnginePlatform::executeCommand_app_move(ITransportClient *socket, double fromx, double fromy, double tox, double toy)
+{
+    mouseMove(fromx, fromy, tox, toy);
+    socketReply(socket, QString());
+}
+
+void GenericEnginePlatform::executeCommand_app_listSignals(ITransportClient *socket, const QString &elementId)
+{
+    qCDebug(categoryGenericEnginePlatform)
+        << Q_FUNC_INFO << socket << elementId;
+
+    QObject* object = getObject(elementId);
+    if (!object)
+    {
+        socketReply(socket, QString("no item"), 1);
+        return;
+    }
+
+    QStringList result;
+
+    auto mo = object->metaObject();
+    do
+    {
+        for (int i = mo->methodOffset(); i < mo->methodOffset() + mo->methodCount(); i++)
+        {
+            const QMetaMethod method = mo->method(i);
+            const QByteArray sig = mo->normalizedSignature(method.methodSignature());
+            if (mo->indexOfSignal(sig) >= 0) {
+                result.append(QString::fromLatin1(sig));
+            }
+        }
+    } while ((mo = mo->superClass()));
+
+    socketReply(socket, result);
 }

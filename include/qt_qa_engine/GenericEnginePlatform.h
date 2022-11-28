@@ -88,6 +88,10 @@ protected:
                                const QString& propertyName,
                                const QVariant& value,
                                int timeout = 10000);
+    bool registerSignal(QObject* item,
+                        const QString& signalName);
+    bool unregisterSignal(QObject* item,
+                        const QString& signalName);
 
     bool checkMatch(const QString& pattern, const QString& value);
 
@@ -98,6 +102,7 @@ protected:
     QAKeyMouseEngine* m_keyMouseEngine = nullptr;
 
     QHash<QString, QStringList> m_blacklistedProperties;
+    QHash<QString, int> m_signalCounter;
 
 signals:
     void ready();
@@ -108,6 +113,7 @@ private:
 private slots:
     // own stuff
     void onPropertyChanged();
+    void onSignalReceived();
 
     // synthesized input events
     virtual void onTouchEvent(const QTouchEvent& event);
@@ -122,6 +128,7 @@ private slots:
     virtual void initializeCommand(ITransportClient* socket) override;
     virtual void activateAppCommand(ITransportClient* socket, const QString& appName) override;
     virtual void closeAppCommand(ITransportClient* socket, const QString& appName) override;
+    virtual void closeWindowCommand(ITransportClient* socket) override;
     virtual void queryAppStateCommand(ITransportClient* socket, const QString& appName) override;
     virtual void backgroundCommand(ITransportClient* socket, qlonglong seconds) override;
     virtual void getClipboardCommand(ITransportClient* socket) override;
@@ -276,6 +283,24 @@ private slots:
                                                   const QString& propertyName,
                                                   const QVariant& value,
                                                   qlonglong timeout = 3000);
+    void executeCommand_app_registerSignal(ITransportClient* socket,
+                                                const QString& elementId,
+                                                const QString& signalName);
+    void executeCommand_app_unregisterSignal(ITransportClient* socket,
+                                                  const QString& elementId,
+                                                  const QString& signalName);
+    void executeCommand_app_countSignals(ITransportClient* socket,
+                                              const QString& elementId,
+                                              const QString& signalName);
     void executeCommand_app_setLoggingFilter(ITransportClient* socket, const QString& rules);
     void executeCommand_app_installFileLogger(ITransportClient* socket, const QString& filePath);
+    void executeCommand_app_click(ITransportClient* socket, double mousex, double mousey);
+    void executeCommand_app_exit(ITransportClient* socket, double code);
+    void executeCommand_app_crash(ITransportClient* socket);
+    void executeCommand_app_pressAndHold(ITransportClient* socket, double mousex, double mousey);
+    void executeCommand_app_move(ITransportClient* socket, double fromx, double fromy, double tox, double toy);
+
+
+    void executeCommand_app_listSignals(ITransportClient* socket,
+                                            const QString& elementId);
 };

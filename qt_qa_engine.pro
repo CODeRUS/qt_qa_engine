@@ -26,10 +26,12 @@ CONFIG += c++11
 
 qtHaveModule(xmlpatterns) {
     QT += xmlpatterns
+    DEFINES += MO_USE_QXMLPATTERNS
 }
 
 qtHaveModule(qml) {
     QT += qml quick quick-private
+    DEFINES += MO_USE_QUICK
 
     SOURCES += src/QuickEnginePlatform.cpp
     HEADERS += include/qt_qa_engine/QuickEnginePlatform.h
@@ -37,6 +39,7 @@ qtHaveModule(qml) {
 
 qtHaveModule(widgets) {
     QT += widgets widgets-private
+    DEFINES += MO_USE_QWIDGETS
 
     SOURCES += src/WidgetsEnginePlatform.cpp
     HEADERS += include/qt_qa_engine/WidgetsEnginePlatform.h

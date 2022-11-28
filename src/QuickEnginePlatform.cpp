@@ -309,6 +309,7 @@ bool QuickEnginePlatform::eventFilter(QObject* watched, QEvent* event)
         }
         case QEvent::MouseButtonPress:
         case QEvent::MouseButtonDblClick:
+        case QEvent::MouseMove:
         {
             QMouseEvent* me = static_cast<QMouseEvent*>(event);
             QMetaObject::invokeMethod(m_touchIndicator,
@@ -348,29 +349,55 @@ void QuickEnginePlatform::grabScreenshot(ITransportClient* socket,
         return;
     }
 
-    QSharedPointer<QQuickItemGrabResult> grabber = q->grabToImage();
+    if (q == m_rootQuickItem)
+    {
+        QByteArray arr;
+        QBuffer buffer(&arr);
+        QPixmap pix;
 
-    connect(grabber.data(),
-            &QQuickItemGrabResult::ready,
-            [this, grabber, socket, fillBackground]()
-            {
-                QByteArray arr;
-                QBuffer buffer(&arr);
-                buffer.open(QIODevice::WriteOnly);
-                if (fillBackground)
+        pix = QPixmap::fromImage(q->window()->grabWindow());
+
+        if (fillBackground)
+        {
+            QPixmap pixmap(pix.width(), pix.height());
+            QPainter painter(&pixmap);
+            painter.fillRect(0, 0, pixmap.width(), pixmap.height(), Qt::black);
+            painter.drawPixmap(0, 0, pix);
+            pixmap.save(&buffer, "PNG");
+        }
+        else
+        {
+            pix.save(&buffer, "PNG");
+        }
+
+        socketReply(socket, arr.toBase64());
+    }
+    else
+    {
+        QSharedPointer<QQuickItemGrabResult> grabber = q->grabToImage();
+
+        connect(grabber.data(),
+                &QQuickItemGrabResult::ready,
+                [this, grabber, socket, fillBackground]()
                 {
-                    QPixmap pixmap(grabber->image().width(), grabber->image().height());
-                    QPainter painter(&pixmap);
-                    painter.fillRect(0, 0, pixmap.width(), pixmap.height(), Qt::white);
-                    painter.drawImage(0, 0, grabber->image());
-                    pixmap.save(&buffer, "PNG");
-                }
-                else
-                {
-                    grabber->image().save(&buffer, "PNG");
-                }
-                socketReply(socket, arr.toBase64());
-            });
+                    QByteArray arr;
+                    QBuffer buffer(&arr);
+                    buffer.open(QIODevice::WriteOnly);
+                    if (fillBackground)
+                    {
+                        QPixmap pixmap(grabber->image().width(), grabber->image().height());
+                        QPainter painter(&pixmap);
+                        painter.fillRect(0, 0, pixmap.width(), pixmap.height(), Qt::white);
+                        painter.drawImage(0, 0, grabber->image());
+                        pixmap.save(&buffer, "PNG");
+                    }
+                    else
+                    {
+                        grabber->image().save(&buffer, "PNG");
+                    }
+                    socketReply(socket, arr.toBase64());
+                });
+    }
 }
 
 void QuickEnginePlatform::pressAndHoldItem(QObject* qitem, int delay)

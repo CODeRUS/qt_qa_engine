@@ -38,7 +38,7 @@ public:
                          int releaseDelay = 600);
     QAPendingEvent* move(const QPointF& pointA,
                          const QPointF& pointB,
-                         int duration = 500,
+                         int duration = 700,
                          int moveSteps = 20,
                          int releaseDelay = 600);
 

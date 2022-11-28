@@ -48,6 +48,7 @@ private slots:
     virtual void initializeCommand(ITransportClient* client) = 0;
     virtual void activateAppCommand(ITransportClient* socket, const QString& appName) = 0;
     virtual void closeAppCommand(ITransportClient* socket, const QString& appName) = 0;
+    virtual void closeWindowCommand(ITransportClient* socket) = 0;
     virtual void queryAppStateCommand(ITransportClient* socket, const QString& appName) = 0;
     virtual void backgroundCommand(ITransportClient* socket, qlonglong seconds) = 0;
     virtual void getClipboardCommand(ITransportClient* socket) = 0;
