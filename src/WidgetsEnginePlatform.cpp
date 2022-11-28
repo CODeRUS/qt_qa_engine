@@ -30,12 +30,14 @@
 #include <QLoggingCategory>
 
 Q_LOGGING_CATEGORY(categoryWidgetsEnginePlatform, "autoqa.qaengine.platform.widgets", QtWarningMsg)
+Q_LOGGING_CATEGORY(categoryWidgetsEnginePlatformFind, "autoqa.qaengine.platform.widgets.find", QtWarningMsg)
 
 namespace
 {
 
 QList<QAction*> s_actions;
-QHash<QAction*, QWidget*> s_actionHash;
+QHash<QAction*, QSet<QWidget*> > s_actionHash;
+QHash<QMenu*, QWidget*> s_menuHash;
 EventHandler* s_eventHandler = nullptr;
 
 static bool s_registerPlatform = []()
@@ -57,26 +59,88 @@ static bool s_registerPlatform = []()
 
 QList<QObject*> WidgetsEnginePlatform::childrenList(QObject* parentItem)
 {
+    if (parentItem == rootObject())
+    {
+        s_actionHash.clear();
+        s_menuHash.clear();
+    }
+
     QList<QObject*> result;
     QWidget* widget = qobject_cast<QWidget*>(parentItem);
     if (widget)
     {
         for (QAction* action : widget->actions())
         {
-            if (!s_actionHash.contains(action))
-            {
-                s_actionHash.insert(action, widget);
-            }
+            s_actionHash[action].insert(widget);
             if (action->menu() && action->menu() != widget)
             {
-                result.append(action->menu());
+                if (s_menuHash.contains(action->menu()))
+                {
+                    if (s_menuHash.value(action->menu()) != widget)
+                    {
+                        continue;
+                    }
+                }
+                else
+                {
+                    s_menuHash.insert(action->menu(), widget);
+                }
+                if (action->menu()->isActiveWindow()) {
+                    result.append(action->menu());
+                }
             }
             result.append(action);
         }
     }
-    for (QWidget* w : parentItem->findChildren<QWidget*>(QString(), Qt::FindDirectChildrenOnly))
+    QGraphicsScene *gs = qobject_cast<QGraphicsScene*>(parentItem);
+    if (gs)
     {
-        result.append(w);
+        for (QGraphicsItem *gi : gs->items())
+        {
+            QGraphicsObject *gw = gi->toGraphicsObject();
+            if (gw)
+            {
+                result.append(gw);
+            }
+        }
+    }
+    QGraphicsWidget *gw = qobject_cast<QGraphicsWidget*>(parentItem);
+    if (gw)
+    {
+        for (QGraphicsItem *gi : gw->childItems())
+        {
+            QGraphicsObject *gw = gi->toGraphicsObject();
+            if (gw)
+            {
+                result.append(gw);
+            }
+        }
+    }
+    for (QObject *o : parentItem->children())
+    {
+        QWidget *w = qobject_cast<QWidget*>(o);
+        if (w)
+        {
+            QMenu *m = qobject_cast<QMenu*>(w);
+            if (m)
+            {
+                if (s_menuHash.contains(m))
+                {
+                    if (s_menuHash.value(m) != w)
+                    {
+                        continue;
+                    }
+                }
+                else
+                {
+                    s_menuHash.insert(m, w);
+                }
+                if (!m->isActiveWindow()) {
+                    continue;
+                }
+            }
+        }
+        result.append(o);
     }
     return result;
 }
@@ -88,16 +152,83 @@ QObject* WidgetsEnginePlatform::getParent(QObject* item)
         return nullptr;
     }
     QWidget* w = qobject_cast<QWidget*>(item);
-    if (!w)
+    if (w)
     {
-        return item->parent();
+        return w->parentWidget();
     }
-    return w->parentWidget();
+    return item->parent();
 }
 
 QWidget* WidgetsEnginePlatform::getItem(const QString& elementId)
 {
     return qobject_cast<QWidget*>(getObject(elementId));
+}
+
+QWidget *WidgetsEnginePlatform::rootWidget()
+{
+    return qobject_cast<QWidget*>(rootObject());
+}
+
+QPointF WidgetsEnginePlatform::mapToGlobal(const QPointF &point)
+{
+    return QPointF(m_rootWidget->mapToGlobal(point.toPoint()));
+}
+
+
+void WidgetsEnginePlatform::removeItem(QObject* o)
+{
+    GenericEnginePlatform::removeItem(o);
+
+    {
+        QHash<QAction*, QSet<QWidget*> >::iterator i = s_actionHash.begin();
+        while (i != s_actionHash.end())
+        {
+            if (i.value().contains(reinterpret_cast<QWidget*>(o))) {
+                i.value().remove(reinterpret_cast<QWidget*>(o));
+            }
+            if (i.key() == o)
+            {
+                i = s_actionHash.erase(i);
+                break;
+            }
+            else
+            {
+                ++i;
+            }
+        }
+    }
+
+    {
+        QHash<QMenu*, QWidget*>::iterator i = s_menuHash.begin();
+        while (i != s_menuHash.end())
+        {
+            if (i.value() == o || i.key() == o)
+            {
+                i = s_menuHash.erase(i);
+                break;
+            }
+            else
+            {
+                ++i;
+            }
+        }
+    }
+}
+
+QObject *WidgetsEnginePlatform::rootObject()
+{
+    if (qApp->activePopupWidget())
+    {
+        return qApp->activePopupWidget();
+    }
+    else if (qApp->activeModalWidget())
+    {
+        return qApp->activeModalWidget();
+    }
+    else
+    {
+        return m_rootObject;
+    }
 }
 
 WidgetsEnginePlatform::WidgetsEnginePlatform(QWindow* window)
@@ -637,23 +768,28 @@ QStringList WidgetsEnginePlatform::recursiveDumpModel(QAbstractItemModel* model,
 
 QRect WidgetsEnginePlatform::getActionGeometry(QAction* action)
 {
-    if (s_actionHash.contains(action))
-    {
-        QWidget* w = s_actionHash.value(action);
-        QMenu* m = qobject_cast<QMenu*>(w);
-        if (m)
-        {
-            QRect geometry = m->actionGeometry(action);
-            geometry.translate(m_rootWidget->mapFromGlobal(m->pos()));
-            return geometry;
-        }
-    }
     if (m_mainWindow && m_mainWindow->menuBar() &&
         m_mainWindow->menuBar()->actions().contains(action))
     {
         QRect geometry = m_mainWindow->menuBar()->actionGeometry(action);
         geometry.translate(m_mainWindow->menuBar()->pos());
         return geometry;
+    }
+    if (s_actionHash.contains(action))
+    {
+        for (QWidget* w : s_actionHash.value(action))
+        {
+            if (w->isVisible())
+            {
+                QMenu* m = qobject_cast<QMenu*>(w);
+                if (m)
+                {
+                    QRect geometry = m->actionGeometry(action);
+                    geometry.translate(m_rootWidget->mapFromGlobal(m->pos()));
+                    return geometry;
+                }
+            }
+        }
     }
     return {};
 }
@@ -664,65 +800,50 @@ QPoint WidgetsEnginePlatform::getAbsPosition(QObject* item)
     if (a)
     {
         auto actionGeometry = getActionGeometry(a);
-        if (!actionGeometry.isEmpty())
+        if (actionGeometry.isValid())
         {
             return actionGeometry.topLeft();
         }
     }
-    QMenu* m = qobject_cast<QMenu*>(item);
-    if (m)
-    {
-        return m_rootWidget->mapFromGlobal(m->pos());
-    }
-
     QWidget* w = qobject_cast<QWidget*>(item);
-    if (!w)
+    if (w)
     {
-        return QPoint();
-    }
-
-    if (w == m_rootWidget)
-    {
-        return QPoint();
-    }
-    else
-    {
+        if (w == m_rootWidget)
+        {
+            return QPoint();
+        }
+        if (auto* popup = qApp->activePopupWidget())
+        {
+            QPoint pos = m_rootWidget->mapFromGlobal(popup->pos());
+            if (w != popup && w->isVisible())
+            {
+                pos += w->mapTo(popup, QPoint(0, 0));
+            }
+            return pos;
+        }
         return w->mapTo(m_rootWidget, QPoint(0, 0));
     }
-}
-
-QPoint WidgetsEnginePlatform::getClickPosition(QObject *item)
-{
-    auto pos = getAbsPosition(item);
-
-    QAction* a = qobject_cast<QAction*>(item);
-    if (a)
+    QGraphicsScene *gs = qobject_cast<QGraphicsScene*>(item);
+    if (gs)
     {
-        if (s_actionHash.contains(a))
-        {
-            QWidget* w = s_actionHash.value(a);
-            QMenu* m = qobject_cast<QMenu*>(w);
-            if (m)
-            {
-                pos.setX(pos.x() + m_rootWindow->frameMargins().left());
-                pos.setY(pos.y() + m_rootWindow->frameMargins().top());
-            }
-        }
+        return getAbsPosition(item->parent()) + gs->sceneRect().topLeft().toPoint();
     }
-
-    return pos;
+    QGraphicsObject *go = qobject_cast<QGraphicsObject*>(item);
+    if (go)
+    {
+        return getAbsPosition(go->scene()) + go->mapToScene(QPointF()).toPoint();
+    }
+    return QPoint();
 }
 
 QPoint WidgetsEnginePlatform::getPosition(QObject* item)
 {
-    qCDebug(categoryWidgetsEnginePlatform) << Q_FUNC_INFO << item;
-
     QWidget* w = qobject_cast<QWidget*>(item);
-    if (!w)
+    if (w)
     {
-        return QPoint();
+        return w->pos();
     }
-    return w->pos();
+    return QPoint();
 }
 
 QSize WidgetsEnginePlatform::getSize(QObject* item)
@@ -737,35 +858,55 @@ QSize WidgetsEnginePlatform::getSize(QObject* item)
         }
     }
     QWidget* w = qobject_cast<QWidget*>(item);
-    if (!w)
+    if (w)
     {
-        return QSize();
+        return w->size();
     }
-    return w->size();
+    QGraphicsScene *gs = qobject_cast<QGraphicsScene*>(item);
+    if (gs)
+    {
+        return gs->sceneRect().size().toSize();
+    }
+    QGraphicsObject *go = qobject_cast<QGraphicsObject*>(item);
+    if (go)
+    {
+        QGraphicsWidget *gw = qobject_cast<QGraphicsWidget*>(go);
+        if (gw)
+        {
+            return gw->geometry().size().toSize();
+        }
+    }
+    return QSize();
 }
 
 bool WidgetsEnginePlatform::isItemEnabled(QObject* item)
 {
-    qCDebug(categoryWidgetsEnginePlatform) << Q_FUNC_INFO << item;
-
     QWidget* w = qobject_cast<QWidget*>(item);
-    if (!w)
+    if (w)
     {
-        return false;
+        return w->isEnabled();
     }
-    return w->isEnabled();
+    QGraphicsObject *go = qobject_cast<QGraphicsObject*>(item);
+    if (go)
+    {
+        return go->isEnabled();
+    }
+    return false;
 }
 
 bool WidgetsEnginePlatform::isItemVisible(QObject* item)
 {
-    qCDebug(categoryWidgetsEnginePlatform) << Q_FUNC_INFO << item;
-
     QWidget* w = qobject_cast<QWidget*>(item);
-    if (!w)
+    if (w)
     {
-        return false;
+        return w->isVisible();
     }
-    return w->isVisible();
+    QGraphicsObject *go = qobject_cast<QGraphicsObject*>(item);
+    if (go)
+    {
+        return go->isVisible();
+    }
+    return false;
 }
 
 void WidgetsEnginePlatform::grabScreenshot(ITransportClient* socket,
@@ -784,12 +925,14 @@ void WidgetsEnginePlatform::grabScreenshot(ITransportClient* socket,
     QBuffer buffer(&arr);
     QPixmap pix;
 
+#if QT_VERSION >= QT_VERSION_CHECK(5, 14, 0)
     if (w == m_rootWidget)
     {
         pix = w->screen()->grabWindow(
             0, m_rootWindow->x(), m_rootWindow->y(), m_rootWindow->width(), m_rootWindow->height());
     }
     else
+#endif
     {
         pix = w->grab();
     }
@@ -825,8 +968,8 @@ void WidgetsEnginePlatform::pressAndHoldItem(QObject* qitem, int delay)
         return;
     }
 
-    const QPointF itemAbs = getAbsPosition(item);
-    pressAndHold(itemAbs.x() + item->width() / 2, itemAbs.y() + item->height() / 2, delay);
+    const QPoint itemCenter = getAbsGeometry(item).center();
+    pressAndHold(itemCenter.x(), itemCenter.y(), delay);
 }
 
 EventHandler::EventHandler(QObject* parent)

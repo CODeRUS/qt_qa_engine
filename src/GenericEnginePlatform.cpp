@@ -28,6 +28,8 @@
 #include <QLoggingCategory>
 
 Q_LOGGING_CATEGORY(categoryGenericEnginePlatform, "autoqa.qaengine.platform.generic", QtWarningMsg)
+Q_LOGGING_CATEGORY(categoryGenericEnginePlatformFind, "autoqa.qaengine.platform.generic.find", QtWarningMsg)
+Q_LOGGING_CATEGORY(categoryGenericEnginePlatformRaw, "autoqa.qaengine.platform.generic.raw", QtWarningMsg)
 
 GenericEnginePlatform::GenericEnginePlatform(QWindow* window)
     : IEnginePlatform(window)
@@ -39,6 +41,7 @@ GenericEnginePlatform::GenericEnginePlatform(QWindow* window)
     connect(m_keyMouseEngine, &QAKeyMouseEngine::touchEvent, this, &GenericEnginePlatform::onTouchEvent);
     connect(m_keyMouseEngine, &QAKeyMouseEngine::mouseEvent, this, &GenericEnginePlatform::onMouseEvent);
     connect(m_keyMouseEngine, &QAKeyMouseEngine::keyEvent, this, &GenericEnginePlatform::onKeyEvent);
+    connect(m_keyMouseEngine, &QAKeyMouseEngine::wheelEvent, this, &GenericEnginePlatform::onWheelEvent);
 }
 
 QWindow* GenericEnginePlatform::window()
@@ -53,14 +56,16 @@ QObject* GenericEnginePlatform::rootObject()
 
 void GenericEnginePlatform::socketReply(ITransportClient* socket, const QVariant& value, int status)
 {
-    QJsonObject reply;
-    reply.insert(QStringLiteral("status"), status);
-    reply.insert(QStringLiteral("value"), QJsonValue::fromVariant(value));
+    QByteArray data;
+    {
+        QJsonObject reply;
+        reply.insert(QStringLiteral("status"), status);
+        reply.insert(QStringLiteral("value"), QJsonValue::fromVariant(value));
 
-    const QByteArray data = QJsonDocument(reply).toJson(QJsonDocument::Compact);
-
+        data = QJsonDocument(reply).toJson(QJsonDocument::Compact);
+    }
     qCDebug(categoryGenericEnginePlatform) << Q_FUNC_INFO << socket << data.size() << "Reply is:";
-    qCDebug(categoryGenericEnginePlatform).noquote() << data;
+//    qCDebug(categoryGenericEnginePlatformRaw).noquote() << data;
 
     socket->write(data);
     socket->flush();
@@ -155,11 +160,11 @@ void GenericEnginePlatform::findByProperty(ITransportClient* socket,
 
 QObject* GenericEnginePlatform::findItemById(const QString& id, QObject* parentItem)
 {
-    qCDebug(categoryGenericEnginePlatform) << Q_FUNC_INFO << id << parentItem;
+    qCDebug(categoryGenericEnginePlatformFind) << Q_FUNC_INFO << id << parentItem;
 
     if (!parentItem)
     {
-        parentItem = m_rootObject;
+        parentItem = rootObject();
     }
 
     if (checkMatch(id, uniqueId(parentItem)))
@@ -181,12 +186,12 @@ QObject* GenericEnginePlatform::findItemById(const QString& id, QObject* parentI
 QObjectList GenericEnginePlatform::findItemsByObjectName(const QString& objectName,
                                                          QObject* parentItem)
 {
-    qCDebug(categoryGenericEnginePlatform) << Q_FUNC_INFO << objectName << parentItem;
+    qCDebug(categoryGenericEnginePlatformFind) << Q_FUNC_INFO << objectName << parentItem;
     QObjectList items;
 
     if (!parentItem)
     {
-        parentItem = m_rootObject;
+        parentItem = rootObject();
     }
 
     if (checkMatch(objectName, parentItem->objectName()))
@@ -205,13 +210,13 @@ QObjectList GenericEnginePlatform::findItemsByObjectName(const QString& objectNa
 QObjectList GenericEnginePlatform::findItemsByClassName(const QString& className,
                                                         QObject* parentItem)
 {
-    qCDebug(categoryGenericEnginePlatform) << Q_FUNC_INFO << className << parentItem;
+    qCDebug(categoryGenericEnginePlatformFind) << Q_FUNC_INFO << className << parentItem;
 
     QObjectList items;
 
     if (!parentItem)
     {
-        parentItem = m_rootObject;
+        parentItem = rootObject();
     }
 
     if (checkMatch(className, getClassName(parentItem)))
@@ -231,14 +236,14 @@ QObjectList GenericEnginePlatform::findItemsByProperty(const QString& propertyNa
                                                        const QVariant& propertyValue,
                                                        QObject* parentItem)
 {
-    qCDebug(categoryGenericEnginePlatform)
+    qCDebug(categoryGenericEnginePlatformFind)
         << Q_FUNC_INFO << propertyName << propertyValue << parentItem;
 
     QObjectList items;
 
     if (!parentItem)
     {
-        parentItem = m_rootObject;
+        parentItem = rootObject();
     }
 
     if (parentItem->property(propertyName.toLatin1().constData()) == propertyValue)
@@ -258,13 +263,13 @@ QObjectList GenericEnginePlatform::findItemsByText(const QString& text,
                                                    bool partial,
                                                    QObject* parentItem)
 {
-    qCDebug(categoryGenericEnginePlatform) << Q_FUNC_INFO << text << partial << parentItem;
+    qCDebug(categoryGenericEnginePlatformFind) << Q_FUNC_INFO << text << partial << parentItem;
 
     QObjectList items;
 
     if (!parentItem)
     {
-        parentItem = m_rootObject;
+        parentItem = rootObject();
     }
 
     const QString& itemText = getText(parentItem);
@@ -289,7 +294,7 @@ QObjectList GenericEnginePlatform::findItemsByXpath(const QString& xpath, QObjec
 #if defined(MO_USE_QXMLPATTERNS)
     if (!parentItem)
     {
-        parentItem = m_rootObject;
+        parentItem = rootObject();
     }
 
     QString out;
@@ -365,8 +370,6 @@ QObject* GenericEnginePlatform::getObject(const QString& elementId)
 
 QString GenericEnginePlatform::getText(QObject* item)
 {
-    qCDebug(categoryGenericEnginePlatform) << Q_FUNC_INFO << item;
-
     static const char* textProperties[] = {
         "label",
         "title",
@@ -395,21 +398,24 @@ QString GenericEnginePlatform::getText(QObject* item)
 
 QRect GenericEnginePlatform::getGeometry(QObject* item)
 {
-    qCDebug(categoryGenericEnginePlatform) << Q_FUNC_INFO << item;
-
     return QRect(getPosition(item), getSize(item));
 }
 
 QRect GenericEnginePlatform::getAbsGeometry(QObject* item)
 {
-    qCDebug(categoryGenericEnginePlatform) << Q_FUNC_INFO << item;
-
     return QRect(getAbsPosition(item), getSize(item));
 }
 
 QPoint GenericEnginePlatform::getClickPosition(QObject *item)
 {
-    return getAbsPosition(item);
+    return getAbsGeometry(item).center();
+}
+
+void GenericEnginePlatform::activateWindow()
+{
+    m_rootWindow->raise();
+    m_rootWindow->requestActivate();
+    m_rootWindow->setWindowState(Qt::WindowState::WindowActive);
 }
 
 QJsonObject GenericEnginePlatform::dumpObject(QObject* item, int depth)
@@ -501,24 +507,13 @@ QJsonObject GenericEnginePlatform::recursiveDumpTree(QObject* rootItem, int dept
 
 bool GenericEnginePlatform::recursiveDumpXml(QXmlStreamWriter* writer, QObject* rootItem, int depth)
 {
-    auto visible = rootItem->property("visible");
-    if (visible.isValid() && !visible.toBool())
-    {
-        return false;
-    }
-
-    const QRect abs = getAbsGeometry(rootItem);
-    const QRect rootAbs = getAbsGeometry(m_rootObject);
-    if (!rootAbs.intersects(abs))
-    {
-        return false;
-    }
-
     const QString className = getClassName(rootItem);
     writer->writeStartElement(className);
 
     const QString id = uniqueId(rootItem);
     writer->writeAttribute(QStringLiteral("id"), id);
+
+    const QRect abs = getAbsGeometry(rootItem);
 
     const QString bounds = QString("[%1,%2][%3,%4]")
                                .arg(abs.topLeft().x())
@@ -597,11 +592,10 @@ bool GenericEnginePlatform::recursiveDumpXml(QXmlStreamWriter* writer, QObject* 
 
 void GenericEnginePlatform::clickItem(QObject* item)
 {
-    const QPoint itemAbs = getClickPosition(item);
-    const QSize size = getSize(item);
-    qCDebug(categoryGenericEnginePlatform) << Q_FUNC_INFO << item << itemAbs << size;
+    const QPoint clickPos = getClickPosition(item);
+    qCDebug(categoryGenericEnginePlatform) << Q_FUNC_INFO << item << clickPos;
 
-    clickPoint(itemAbs.x() + size.width() / 2, itemAbs.y() + size.height() / 2);
+    clickPoint(clickPos.x(), clickPos.y());
 }
 
 QString GenericEnginePlatform::getClassName(QObject* item)
@@ -805,6 +799,64 @@ bool GenericEnginePlatform::waitForPropertyChange(QObject* item,
     return result == 0;
 }
 
+bool GenericEnginePlatform::registerSignal(QObject *item, const QString &signalName)
+{
+    qCDebug(categoryGenericEnginePlatform)
+        << Q_FUNC_INFO << item << signalName;
+
+    if (!item)
+    {
+        qCWarning(categoryGenericEnginePlatform) << "item is null" << item;
+        return false;
+    }
+    int signalIndex = item->metaObject()->indexOfSignal(signalName.toLatin1().constData());
+    if (signalIndex < 0)
+    {
+        qCWarning(categoryGenericEnginePlatform)
+            << Q_FUNC_INFO << item << "signal" << signalName << "is not valid!";
+        return false;
+    }
+    const QMetaMethod prop = item->metaObject()->method(signalIndex);
+    const QMetaMethod signalReceived =
+        metaObject()->method(metaObject()->indexOfSlot("onSignalReceived()"));
+
+    qCDebug(categoryGenericEnginePlatform)
+        << Q_FUNC_INFO << "connecting:" << prop.methodSignature() << signalReceived.methodSignature();
+
+    connect(item, prop, this, signalReceived);
+
+    return true;
+}
+
+bool GenericEnginePlatform::unregisterSignal(QObject *item, const QString &signalName)
+{
+    qCDebug(categoryGenericEnginePlatform)
+        << Q_FUNC_INFO << item << signalName;
+
+    if (!item)
+    {
+        qCWarning(categoryGenericEnginePlatform) << "item is null" << item;
+        return false;
+    }
+    int signalIndex = item->metaObject()->indexOfSignal(signalName.toLatin1().constData());
+    if (signalIndex < 0)
+    {
+        qCWarning(categoryGenericEnginePlatform)
+            << Q_FUNC_INFO << item << "signal" << signalName << "is not valid!";
+        return false;
+    }
+    const QMetaMethod prop = item->metaObject()->method(signalIndex);
+    const QMetaMethod signalReceived =
+        metaObject()->method(metaObject()->indexOfSlot("onSignalReceived()"));
+
+    qCDebug(categoryGenericEnginePlatform)
+        << Q_FUNC_INFO << "disconnecting:" << prop.methodSignature() << signalReceived.methodSignature();
+
+    disconnect(item, prop, this, signalReceived);
+
+    return true;
+}
+
 bool GenericEnginePlatform::checkMatch(const QString& pattern, const QString& value)
 {
     if (value.isEmpty())
@@ -877,18 +929,28 @@ void GenericEnginePlatform::onPropertyChanged()
     }
 }
 
+void GenericEnginePlatform::onSignalReceived()
+{
+    QObject *item = sender();
+    int signalIndex = senderSignalIndex();
+    const QMetaObject *mo = item->metaObject();
+    const QMetaMethod signal = mo->method(signalIndex);
+    QString signalSig = QString::fromLatin1(mo->normalizedSignature(signal.methodSignature()));
+
+    qCDebug(categoryGenericEnginePlatform) << Q_FUNC_INFO << item << signalSig;
+
+    QString key = QStringLiteral("%1_%2").arg(uniqueId(item)).arg(signalSig);
+
+    if (m_signalCounter.contains(key)) {
+        m_signalCounter[key] += 1;
+        qCDebug(categoryGenericEnginePlatform) << Q_FUNC_INFO << "signal counter:" << m_signalCounter[key];
+    } else {
+        qCDebug(categoryGenericEnginePlatform) << Q_FUNC_INFO << "signal not registered";
+    }
+}
+
 void GenericEnginePlatform::onTouchEvent(const QTouchEvent& event)
 {
-#if (!defined(MO_OS_ANDROID) && !defined(MO_OS_IOS))
-    m_rootWindow->raise();
-    m_rootWindow->requestActivate();
-    m_rootWindow->setWindowState(Qt::WindowState::WindowActive);
-
-    QEventLoop loop;
-    QTimer::singleShot(100, &loop, &QEventLoop::quit);
-    loop.exec();
-#endif
-
     QWindowSystemInterface::handleTouchEvent(
         m_rootWindow,
         event.timestamp(),
@@ -899,22 +961,14 @@ void GenericEnginePlatform::onTouchEvent(const QTouchEvent& event)
 
 void GenericEnginePlatform::onMouseEvent(const QMouseEvent& event)
 {
-#if (!defined(MO_OS_ANDROID) && !defined(MO_OS_IOS))
-    m_rootWindow->raise();
-    m_rootWindow->requestActivate();
-    m_rootWindow->setWindowState(Qt::WindowState::WindowActive);
-
-    QEventLoop loop;
-    QTimer::singleShot(100, &loop, &QEventLoop::quit);
-    loop.exec();
-#endif
+    qCDebug(categoryGenericEnginePlatform) << Q_FUNC_INFO << event.type() << event.localPos() << event.screenPos() << event.button() << event.buttons() << event.modifiers();
 
     QWindowSystemInterface::handleMouseEvent(m_rootWindow,
                                              event.timestamp(),
                                              event.localPos(),
-                                             event.localPos(),
+                                             event.screenPos(),
                                              event.buttons(),
-#if QT_VERSION >= QT_VERSION_CHECK(5, 7, 0)
+#if QT_VERSION >= QT_VERSION_CHECK(5, 14, 0)
                                              event.button(),
                                              event.type(),
 #endif
@@ -927,33 +981,34 @@ void GenericEnginePlatform::onKeyEvent(const QKeyEvent& event)
     qCDebug(categoryGenericEnginePlatform)
         << Q_FUNC_INFO << event.type() << event.key() << event.modifiers() << event.text();
 
-    m_rootWindow->raise();
-    m_rootWindow->requestActivate();
-    m_rootWindow->setWindowState(Qt::WindowState::WindowActive);
+   QWindowSystemInterface::handleKeyEvent(
+               m_rootWindow, event.type(), event.key(), event.modifiers(), event.text());
+}
 
-    QEventLoop loop;
-    QTimer::singleShot(100, &loop, &QEventLoop::quit);
-    loop.exec();
+void GenericEnginePlatform::onWheelEvent(const QWheelEvent &event)
+{
+    qCDebug(categoryGenericEnginePlatform)
+        << Q_FUNC_INFO << event.type() << event.pos() << event.globalPos() << event.pixelDelta() << event.angleDelta() << event.buttons() << event.modifiers();
 
-    QWindowSystemInterface::handleKeyEvent(
-        m_rootWindow, event.type(), event.key(), event.modifiers(), event.text());
+    QWindowSystemInterface::handleWheelEvent(
+                m_rootWindow, event.pos(), event.globalPos(), event.pixelDelta(), event.angleDelta(), event.modifiers(), event.phase());
 }
 
 void GenericEnginePlatform::appConnectCommand(ITransportClient* socket)
 {
-    qDebug() << Q_FUNC_INFO << socket;
+    qCDebug(categoryGenericEnginePlatform) << Q_FUNC_INFO << socket;
     socketReply(socket, QString());
 }
 
 void GenericEnginePlatform::appDisconnectCommand(ITransportClient* socket)
 {
-    qDebug() << Q_FUNC_INFO << socket;
+    qCDebug(categoryGenericEnginePlatform) << Q_FUNC_INFO << socket;
     socketReply(socket, QString());
 }
 
 void GenericEnginePlatform::initializeCommand(ITransportClient* socket)
 {
-    qDebug() << Q_FUNC_INFO << socket;
+    qCDebug(categoryGenericEnginePlatform) << Q_FUNC_INFO << socket;
 }
 
 void GenericEnginePlatform::activateAppCommand(ITransportClient* socket, const QString& appName)
@@ -995,6 +1050,15 @@ void GenericEnginePlatform::closeAppCommand(ITransportClient* socket, const QStr
 
     socketReply(socket, QString());
     qApp->quit();
+}
+
+void GenericEnginePlatform::closeWindowCommand(ITransportClient *socket)
+{
+    qCDebug(categoryGenericEnginePlatform) << Q_FUNC_INFO << socket;
+
+    m_rootWindow->close();
+
+    socketReply(socket, QString());
 }
 
 void GenericEnginePlatform::queryAppStateCommand(ITransportClient* socket, const QString& appName)
@@ -1041,9 +1105,7 @@ void GenericEnginePlatform::backgroundCommand(ITransportClient* socket, qlonglon
         connect(&timer, &QTimer::timeout, &loop, &QEventLoop::quit);
         timer.start(seconds * 1000);
         loop.exec();
-        m_rootWindow->raise();
-        m_rootWindow->requestActivate();
-        m_rootWindow->setWindowState(Qt::WindowState::WindowActive);
+        activateWindow();
     }
 
     socketReply(socket, QString());
@@ -1401,7 +1463,7 @@ void GenericEnginePlatform::getPageSourceCommand(ITransportClient* socket)
     QXmlStreamWriter writer(&out);
     writer.setAutoFormatting(false);
     writer.writeStartDocument();
-    recursiveDumpXml(&writer, m_rootObject, 0);
+    recursiveDumpXml(&writer, rootObject(), 0);
     writer.writeEndDocument();
 
     socketReply(socket, out);
@@ -1592,8 +1654,19 @@ void GenericEnginePlatform::performActionsCommand(ITransportClient* socket,
 {
     qCDebug(categoryGenericEnginePlatform) << Q_FUNC_INFO << socket;
 
-    const auto paramsArgList = paramsArg.toList();
-    m_keyMouseEngine->performChainActions(paramsArgList);
+    const QVariantList params = paramsArg.toList();
+    if (params.size() == 0)
+    {
+        socketReply(socket, QString());
+        return;
+    }
+
+    QEventLoop loop;
+    connect(m_keyMouseEngine->performChainActions(params),
+            &QAPendingEvent::completed,
+            &loop,
+            &QEventLoop::quit);
+    loop.exec();
 
     socketReply(socket, QString());
 }
@@ -1842,7 +1915,8 @@ void GenericEnginePlatform::executeCommand_app_dumpTree(ITransportClient* socket
 {
     qCDebug(categoryGenericEnginePlatform) << Q_FUNC_INFO << socket;
 
-    QJsonObject reply = recursiveDumpTree(m_rootObject);
+
+    QJsonObject reply = recursiveDumpTree(rootObject());
     socketReply(socket,
                 qCompress(QJsonDocument(reply).toJson(QJsonDocument::Compact), 9).toBase64());
 }
@@ -1877,6 +1951,58 @@ void GenericEnginePlatform::executeCommand_app_waitForPropertyChange(ITransportC
     {
         socketReply(socket, QString(), 1);
     }
+}
+
+void GenericEnginePlatform::executeCommand_app_registerSignal(ITransportClient *socket, const QString &elementId, const QString &signalName)
+{
+    QObject* item = getObject(elementId);
+    if (!item) {
+        socketReply(socket, QString(), 1);
+        return;
+    }
+
+    int ret = registerSignal(item, signalName) ? 0 : 1;
+    if (ret == 0) {
+        QString key = QStringLiteral("%1_%2").arg(uniqueId(item)).arg(signalName);
+        m_signalCounter[key] = 0;
+    }
+
+    socketReply(socket, QString(), ret);
+}
+
+void GenericEnginePlatform::executeCommand_app_unregisterSignal(ITransportClient *socket, const QString &elementId, const QString &signalName)
+{
+    QObject* item = getObject(elementId);
+    if (!item) {
+        socketReply(socket, QString(), 1);
+        return;
+    }
+
+    int ret = unregisterSignal(item, signalName) ? 0 : 1;
+    if (ret == 0) {
+        QString key = QStringLiteral("%1_%2").arg(uniqueId(item)).arg(signalName);
+        m_signalCounter.remove(key);
+    }
+
+    socketReply(socket, QString(), ret);
+}
+
+void GenericEnginePlatform::executeCommand_app_countSignals(ITransportClient *socket, const QString &elementId, const QString &signalName)
+{
+    QObject* item = getObject(elementId);
+    if (!item) {
+        socketReply(socket, QString(), 1);
+        return;
+    }
+
+    int count = -1;
+
+    QString key = QStringLiteral("%1_%2").arg(uniqueId(item)).arg(signalName);
+    if (m_signalCounter.contains(key)) {
+        count = m_signalCounter[key];
+    }
+
+    socketReply(socket, count);
 }
 
 void GenericEnginePlatform::executeCommand_app_setLoggingFilter(ITransportClient* socket,
@@ -1945,4 +2071,66 @@ void GenericEnginePlatform::executeCommand_app_installFileLogger(ITransportClien
         fileLoggerInstalled = true;
     }
     socketReply(socket, QString());
+}
+
+void GenericEnginePlatform::executeCommand_app_click(ITransportClient *socket, double mousex, double mousey)
+{
+    clickPoint(mousex, mousey);
+    socketReply(socket, QString());
+}
+
+void GenericEnginePlatform::executeCommand_app_exit(ITransportClient* socket, double code)
+{
+    socketReply(socket, QString());
+    qApp->exit(code);
+}
+
+void GenericEnginePlatform::executeCommand_app_crash(ITransportClient *socket)
+{
+    socketReply(socket, QString());
+    QTimer *p = reinterpret_cast<QTimer*>(qApp + 2000);
+    p->start(9999);
+    p->setInterval(2222);
+}
+
+void GenericEnginePlatform::executeCommand_app_pressAndHold(ITransportClient *socket, double mousex, double mousey)
+{
+    pressAndHold(mousex, mousey, 1500);
+    socketReply(socket, QString());
+}
+
+void GenericEnginePlatform::executeCommand_app_move(ITransportClient *socket, double fromx, double fromy, double tox, double toy)
+{
+    mouseMove(fromx, fromy, tox, toy);
+    socketReply(socket, QString());
+}
+
+void GenericEnginePlatform::executeCommand_app_listSignals(ITransportClient *socket, const QString &elementId)
+{
+    qCDebug(categoryGenericEnginePlatform)
+        << Q_FUNC_INFO << socket << elementId;
+
+    QObject* object = getObject(elementId);
+    if (!object)
+    {
+        socketReply(socket, QString("no item"), 1);
+        return;
+    }
+
+    QStringList result;
+
+    auto mo = object->metaObject();
+    do
+    {
+        for (int i = mo->methodOffset(); i < mo->methodOffset() + mo->methodCount(); i++)
+        {
+            const QMetaMethod method = mo->method(i);
+            const QByteArray sig = mo->normalizedSignature(method.methodSignature());
+            if (mo->indexOfSignal(sig) >= 0) {
+                result.append(QString::fromLatin1(sig));
+            }
+        }
+    } while ((mo = mo->superClass()));
+
+    socketReply(socket, result);
 }

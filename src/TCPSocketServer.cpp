@@ -28,7 +28,16 @@ void TCPSocketServer::start()
         return;
     }
 
-    if (!m_server->listen(QHostAddress::AnyIPv4, m_port))
+    for (int i = 0; i < 10; i++) {
+        if (m_server->listen(QHostAddress::AnyIPv4, m_port + i)) {
+            m_port = m_port + i;
+            break;
+        } else {
+            qCWarning(categoryTCPSocketServer) << Q_FUNC_INFO << m_server->errorString();
+        }
+    }
+
+    if (!m_server->isListening())
     {
         qCWarning(categoryTCPSocketServer) << Q_FUNC_INFO << m_server->errorString();
         qApp->quit();

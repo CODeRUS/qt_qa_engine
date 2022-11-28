@@ -17,6 +17,10 @@ class WidgetsEnginePlatform : public GenericEnginePlatform
 public:
     explicit WidgetsEnginePlatform(QWindow* window);
     QWidget* getItem(const QString& elementId);
+    QObject* rootObject() override;
+    QWidget* rootWidget();
+    QPointF mapToGlobal(const QPointF &point) override;
+    void removeItem(QObject* o) override;
 
 public slots:
     virtual void initialize() override;
@@ -24,7 +28,6 @@ public slots:
     QObject* getParent(QObject* item) override;
 
     QPoint getAbsPosition(QObject* item) override;
-    QPoint getClickPosition(QObject *item) override;
     QPoint getPosition(QObject* item) override;
     QSize getSize(QObject* item) override;
     bool isItemEnabled(QObject* item) override;
