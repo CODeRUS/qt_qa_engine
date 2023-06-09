@@ -1,4 +1,3 @@
-// Copyright (c) 2019-2020 Open Mobile Platform LLC.
 #include <qt_qa_engine/GenericEnginePlatform.h>
 #include <qt_qa_engine/ITransportClient.h>
 #include <qt_qa_engine/QAEngine.h>
@@ -15,9 +14,12 @@
 #include <QJsonObject>
 #include <QJsonValue>
 #include <QMetaMethod>
+#include <QRegularExpression>
+#include <QRegExp>
 #include <QStandardPaths>
 #include <QTimer>
 #include <QXmlStreamWriter>
+#include <QVariant>
 
 #if defined(MO_USE_QXMLPATTERNS)
 #include <QXmlQuery>
@@ -25,11 +27,29 @@
 
 #include <qpa/qwindowsysteminterface_p.h>
 
+#if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)
+#include <private/qeventpoint_p.h>
+#endif
+
 #include <QLoggingCategory>
 
 Q_LOGGING_CATEGORY(categoryGenericEnginePlatform, "autoqa.qaengine.platform.generic", QtWarningMsg)
 Q_LOGGING_CATEGORY(categoryGenericEnginePlatformFind, "autoqa.qaengine.platform.generic.find", QtWarningMsg)
 Q_LOGGING_CATEGORY(categoryGenericEnginePlatformRaw, "autoqa.qaengine.platform.generic.raw", QtWarningMsg)
+
+bool variantCompare(const QVariant &lhs, const QVariant &rhs)
+{
+#if QT_VERSION < QT_VERSION_CHECK(6, 0, 0)
+    return lhs < rhs;
+#else
+    return QVariant::compare(lhs, rhs) == QPartialOrdering::Less;
+#endif
+}
+
+bool variantPairCompare(const std::pair<QString, QVariant> &lhs, const std::pair<QString, QVariant> &rhs)
+{
+    return variantCompare(lhs.second, rhs.second);
+}
 
 GenericEnginePlatform::GenericEnginePlatform(QWindow* window)
     : IEnginePlatform(window)
@@ -453,7 +473,7 @@ QJsonObject GenericEnginePlatform::dumpObject(QObject* item, int depth)
 
             v.emplace_back(propertyName, mo->property(i).read(item));
         }
-        std::sort(v.begin(), v.end());
+        std::sort(v.begin(), v.end(), variantPairCompare);
         for (auto& i : v)
         {
             if (!object.contains(i.first) && i.second.canConvert<QString>())
@@ -951,22 +971,39 @@ void GenericEnginePlatform::onSignalReceived()
 
 void GenericEnginePlatform::onTouchEvent(const QTouchEvent& event)
 {
+#if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)
+    auto e = new QTouchEvent(event.type(), static_cast<const QPointingDevice*>(event.device()), event.modifiers(), event.points());
+
+    auto *mut = QMutableTouchEvent::from(e);
+    mut->setTarget(m_rootWindow);
+
+    QCoreApplication::sendEvent(m_rootWindow, e);
+#else
     QWindowSystemInterface::handleTouchEvent(
         m_rootWindow,
         event.timestamp(),
         event.device(),
         QWindowSystemInterfacePrivate::toNativeTouchPoints(event.touchPoints(), m_rootWindow),
         event.modifiers());
+#endif
 }
 
 void GenericEnginePlatform::onMouseEvent(const QMouseEvent& event)
 {
+#if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)
+    qCDebug(categoryGenericEnginePlatform) << Q_FUNC_INFO << event.type() << event.position() << event.scenePosition() << event.button() << event.buttons() << event.modifiers();
+#else
     qCDebug(categoryGenericEnginePlatform) << Q_FUNC_INFO << event.type() << event.localPos() << event.screenPos() << event.button() << event.buttons() << event.modifiers();
-
+#endif
     QWindowSystemInterface::handleMouseEvent(m_rootWindow,
                                              event.timestamp(),
+#if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)
+                                             event.position(),
+                                             event.scenePosition(),
+#else
                                              event.localPos(),
                                              event.screenPos(),
+#endif
                                              event.buttons(),
 #if QT_VERSION >= QT_VERSION_CHECK(5, 14, 0)
                                              event.button(),
@@ -987,11 +1024,19 @@ void GenericEnginePlatform::onKeyEvent(const QKeyEvent& event)
 
 void GenericEnginePlatform::onWheelEvent(const QWheelEvent &event)
 {
+#if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)
     qCDebug(categoryGenericEnginePlatform)
-        << Q_FUNC_INFO << event.type() << event.pos() << event.globalPos() << event.pixelDelta() << event.angleDelta() << event.buttons() << event.modifiers();
+        << Q_FUNC_INFO << event.type() << event.position() << event.scenePosition() << event.pixelDelta() << event.angleDelta() << event.buttons() << event.modifiers();
 
     QWindowSystemInterface::handleWheelEvent(
-                m_rootWindow, event.pos(), event.globalPos(), event.pixelDelta(), event.angleDelta(), event.modifiers(), event.phase());
+                m_rootWindow, event.position(), event.scenePosition(), event.pixelDelta(), event.angleDelta(), event.modifiers(), event.phase());
+#else
+   qCDebug(categoryGenericEnginePlatform)
+       << Q_FUNC_INFO << event.type() << event.pos() << event.globalPos() << event.pixelDelta() << event.angleDelta() << event.buttons() << event.modifiers();
+
+   QWindowSystemInterface::handleWheelEvent(
+       m_rootWindow, event.pos(), event.globalPos(), event.pixelDelta(), event.angleDelta(), event.modifiers(), event.phase());
+#endif
 }
 
 void GenericEnginePlatform::appConnectCommand(ITransportClient* socket)
@@ -1601,7 +1646,7 @@ void GenericEnginePlatform::executeCommand(ITransportClient* socket,
                                            const QString& command,
                                            const QVariantList& params)
 {
-    qCDebug(categoryGenericEnginePlatform) << Q_FUNC_INFO << socket << command << params;
+    qWarning() << Q_FUNC_INFO << socket << command << params;
 
     const QString fixCommand = QString(command).replace(QChar(':'), QChar('_'));
     const QString methodName = QStringLiteral("executeCommand_%1").arg(fixCommand);
@@ -1807,7 +1852,11 @@ void GenericEnginePlatform::executeCommand_app_method_type(ITransportClient* soc
     }
     else
     {
+#if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)
+        QVariant reply(QMetaType::fromName(returnType.toLatin1()));
+#else
         QVariant reply(QVariant::nameToType(returnType.toLatin1()));
+#endif
         bool result =
             QMetaObject::invokeMethod(item,
                                       method.toLatin1().constData(),
@@ -1848,7 +1897,7 @@ void GenericEnginePlatform::executeCommand_app_method(ITransportClient* socket,
     QGenericArgument arguments[10] = {QGenericArgument()};
     for (int i = 0; i < params.length(); i++)
     {
-        arguments[i] = Q_ARG(QVariant, params[i]);
+        arguments[i] = QGenericArgument(params[i].typeName(), params[i].constData());
     }
 
     QVariant reply;
@@ -1889,7 +1938,7 @@ void GenericEnginePlatform::executeCommand_app_method_void(ITransportClient* soc
     QGenericArgument arguments[10] = {QGenericArgument()};
     for (int i = 0; i < params.length(); i++)
     {
-        arguments[i] = Q_ARG(QVariant, params[i]);
+        arguments[i] = QGenericArgument(params[i].typeName(), params[i].constData());
     }
 
     QVariant reply;
@@ -2056,7 +2105,7 @@ void fileHandler(QtMsgType type, const QMessageLogContext&, const QString& msg)
             txt = QString("Info: %1").arg(msg);
             break;
     }
-    ts << txt << endl;
+    ts << txt << Qt::endl;
     outFile.flush();
 }
 

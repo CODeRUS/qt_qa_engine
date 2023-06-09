@@ -1,8 +1,7 @@
-// Copyright (c) 2019-2020 Open Mobile Platform LLC.
-#ifndef QAPENDINGEVENT_HPP
-#define QAPENDINGEVENT_HPP
+#pragma once
 
 #include <QObject>
+#include <QVariant>
 
 class QAPendingEvent : public QObject
 {
@@ -17,4 +16,3 @@ public slots:
     void setCompleted();
 };
 
-#endif // QAPENDINGEVENT_HPP

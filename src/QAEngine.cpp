@@ -33,6 +33,10 @@
 #include <QLoggingCategory>
 
 #include <private/qhooks_p.h>
+#include <private/qmetaobject_p.h>
+#include <private/qmetatype_p.h>
+
+#include <array>
 
 Q_LOGGING_CATEGORY(categoryEngine, "autoqa.qaengine.engine", QtWarningMsg)
 
@@ -103,8 +107,8 @@ IEnginePlatform* QAEngine::getPlatform(bool silent)
 
 void QAEngine::initializeSocket()
 {
-    qCDebug(categoryEngine) << Q_FUNC_INFO << endl
-                            << "name:" << qApp->arguments().first() << endl
+    qCDebug(categoryEngine) << Q_FUNC_INFO << Qt::endl
+                            << "name:" << qApp->arguments().first() << Qt::endl
                             << "pid:" << qApp->applicationPid();
 
     qCDebug(categoryEngine) << "QAPreload Version:"
@@ -128,7 +132,7 @@ void QAEngine::initializeEngine()
     }
     s_engineLoaded = true;
 
-    qCDebug(categoryEngine) << Q_FUNC_INFO << endl;
+    qCDebug(categoryEngine) << Q_FUNC_INFO << Qt::endl;
 
     qtHookData[QHooks::RemoveQObject] = reinterpret_cast<quintptr>(&QAEngine::objectRemoved);
     qtHookData[QHooks::AddQObject] = reinterpret_cast<quintptr>(&QAEngine::objectCreated);
@@ -280,7 +284,51 @@ bool QAEngine::metaInvoke(ITransportClient* socket,
         {
             if (mo->method(i).name() == methodName.toLatin1())
             {
+                if (implemented)
+                {
+                    *implemented = true;
+                }
+
                 const QMetaMethod method = mo->method(i);
+
+#if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)
+                QVariantList args = params;
+
+                std::vector<const void*> data;
+                std::vector<const char*> names;
+                std::vector<const QtPrivate::QMetaTypeInterface*> types;
+
+                QMetaMethodReturnArgument r = {};
+                data.push_back(r.data);
+                names.push_back(r.name);
+                types.push_back(r.metaType);
+
+                auto socketArg = Q_ARG(ITransportClient*, socket);
+                data.push_back(socketArg.data);
+                names.push_back(socketArg.name);
+                types.push_back(socketArg.metaType);
+
+                for (int i = 0; i < (method.parameterCount() - 1) && args.count() > i; i++) {
+                    QMetaType paramType = method.parameterMetaType(i + 1);
+                    if (args[i].metaType() != paramType) {
+                        args[i].convert(paramType);
+                    }
+                    data.push_back(args[i].data());
+                    names.push_back(args[i].metaType().name());
+                    types.push_back(args[i].metaType().iface());
+                }
+
+                QMetaMethodInvoker::InvokeFailReason reason =
+                        QMetaMethodInvoker::invokeImpl(method, object, Qt::DirectConnection,
+                                                       data.size(), &data[0], &names[0], &types[0]);
+
+                if (int(reason) <= 0) {
+                    return reason == QMetaMethodInvoker::InvokeFailReason::None;
+                } else {
+                    qWarning() << Q_FUNC_INFO << "method not found!";
+                    return false;
+                }
+#else
                 QGenericArgument arguments[9] = {QGenericArgument()};
                 for (int i = 0; i < (method.parameterCount() - 1) && params.count() > i; i++)
                 {
@@ -292,13 +340,6 @@ bool QAEngine::metaInvoke(ITransportClient* socket,
                     {
                         arguments[i] = qVariantToArgument(params[i]);
                     }
-                }
-                qCDebug(categoryEngine)
-                    << Q_FUNC_INFO << "found" << methodName << "in" << mo->className();
-
-                if (implemented)
-                {
-                    *implemented = true;
                 }
 
                 return QMetaObject::invokeMethod(object,
@@ -314,6 +355,7 @@ bool QAEngine::metaInvoke(ITransportClient* socket,
                                                  arguments[6],
                                                  arguments[7],
                                                  arguments[8]);
+#endif
             }
         }
     } while ((mo = mo->superClass()));

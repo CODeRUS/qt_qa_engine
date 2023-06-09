@@ -12,9 +12,14 @@
 #include <private/qvariantanimation_p.h>
 #include <qpa/qwindowsysteminterface_p.h>
 
+#if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)
+#include <private/qeventpoint_p.h>
+#endif
+
 #include <QElapsedTimer>
 
 #include <QDebug>
+#include <QReadWriteLock>
 #include <QThread>
 #include <QWheelEvent>
 
@@ -110,16 +115,30 @@ int seleniumKeyToQt(ushort key)
 QAKeyMouseEngine::QAKeyMouseEngine(QObject* parent)
     : QObject(parent)
     , m_eta(new QElapsedTimer())
+
+#if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)
+    , m_touchDevice(new QPointingDevice("qainput", 42,
+                                        QInputDevice::DeviceType::TouchScreen,
+                                        QPointingDevice::PointerType::Finger,
+                                        QInputDevice::Capability::Position | QInputDevice::Capability::Area,
+                                        10, 0))
+#else
     , m_touchDevice(new QTouchDevice())
+#endif
 {
     qRegisterMetaType<Qt::KeyboardModifiers>();
 
+
+#if QT_VERSION < QT_VERSION_CHECK(6, 0, 0)
     m_touchDevice->setCapabilities(QTouchDevice::Position | QTouchDevice::Area);
     m_touchDevice->setMaximumTouchPoints(10);
     m_touchDevice->setType(QTouchDevice::TouchScreen);
     m_touchDevice->setName(QStringLiteral("qainput"));
 
     QWindowSystemInterface::registerTouchDevice(m_touchDevice);
+#else
+    QWindowSystemInterface::registerInputDevice(m_touchDevice);
+#endif
 
     m_eta->start();
 }
@@ -432,7 +451,13 @@ qint64 QAKeyMouseEngine::getEta()
     return m_eta->elapsed();
 }
 
-QTouchDevice* QAKeyMouseEngine::getTouchDevice()
+
+#if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)
+QPointingDevice*
+#else
+QTouchDevice*
+#endif
+QAKeyMouseEngine::getTouchDevice()
 {
     return m_touchDevice;
 }
@@ -442,6 +467,36 @@ void QAKeyMouseEngine::onPressed(const QPointF point)
     qCDebug(categoryKeyMouseEngine) << Q_FUNC_INFO << point;
     if (m_mode == TouchEventMode)
     {
+#if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)
+        int pointId = getNextPointId();
+
+        QEventPoint tp(pointId, m_touchDevice);
+        QMutableEventPoint::setState(tp, QEventPoint::Pressed);
+
+        QRectF rect(point.x() - 16, point.y() - 16, 32, 32);
+        QMutableEventPoint::setEllipseDiameters(tp, {16, 16});
+        QMutableEventPoint::setPosition(tp, point);
+        QMutableEventPoint::setScenePosition(tp, point);
+        QMutableEventPoint::setGlobalPosition(tp, QAEngine::instance()->getPlatform()->mapToGlobal(point));
+        QMutableEventPoint::setTimestamp(tp, m_eta->elapsed());
+        QMutableEventPoint::setPressTimestamp(tp, m_eta->elapsed());
+
+        m_touchPoints.insert(sender(), tp);
+
+        QEvent::Type type = QEvent::TouchBegin;
+        if (m_touchPoints.size() > 1)
+        {
+            type = QEvent::TouchUpdate;
+        }
+
+        QTouchEvent te(type, m_touchDevice, m_mods, m_touchPoints.values());
+        te.setTimestamp(m_eta->elapsed());
+
+        emit touchEvent(te);
+
+        QMutableEventPoint::setState(tp, QEventPoint::Stationary);
+        m_touchPoints.insert(sender(), tp);
+#else
         int pointId = getNextPointId();
 
         QTouchEvent::TouchPoint tp(pointId);
@@ -471,6 +526,7 @@ void QAKeyMouseEngine::onPressed(const QPointF point)
         m_touchPoints.insert(sender(), tp);
 
         emit touchEvent(te);
+#endif
     }
     else
     {
@@ -487,6 +543,32 @@ void QAKeyMouseEngine::onMoved(const QPointF point)
     qCDebug(categoryKeyMouseEngine) << Q_FUNC_INFO << point;
     if (m_mode == TouchEventMode)
     {
+#if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)
+        QEventPoint tp = m_touchPoints.value(sender());
+        QMutableEventPoint::setState(tp, QEventPoint::Updated);
+
+        QRectF rect(point.x() - 16, point.y() - 16, 32, 32);
+        QMutableEventPoint::setEllipseDiameters(tp, {16, 16});
+        QMutableEventPoint::setPosition(tp, point);
+        QMutableEventPoint::setScenePosition(tp, point);
+        QMutableEventPoint::setGlobalPosition(tp, QAEngine::instance()->getPlatform()->mapToGlobal(point));
+        QMutableEventPoint::setTimestamp(tp, m_eta->elapsed());
+        QMutableEventPoint::setPressTimestamp(tp, m_eta->elapsed());
+
+        m_touchPoints.insert(sender(), tp);
+
+        QEvent::Type type = QEvent::TouchUpdate;
+
+        QTouchEvent te(type, m_touchDevice, m_mods, m_touchPoints.values());
+        te.setTimestamp(m_eta->elapsed());
+
+        m_touchPoints.remove(sender());
+
+        emit touchEvent(te);
+
+        QMutableEventPoint::setState(tp, QEventPoint::Stationary);
+        m_touchPoints.insert(sender(), tp);
+#else
         QTouchEvent::TouchPoint tp = m_touchPoints.value(sender());
 
         tp.setState(Qt::TouchPointMoved);
@@ -514,6 +596,7 @@ void QAKeyMouseEngine::onMoved(const QPointF point)
         m_touchPoints.insert(sender(), tp);
 
         emit touchEvent(te);
+#endif
     }
     else
     {
@@ -528,6 +611,33 @@ void QAKeyMouseEngine::onReleased(const QPointF point)
     qCDebug(categoryKeyMouseEngine) << Q_FUNC_INFO << point;
     if (m_mode == TouchEventMode)
     {
+#if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)
+        QEventPoint tp = m_touchPoints.value(sender());
+        QMutableEventPoint::setState(tp, QEventPoint::Released);
+
+        QRectF rect(point.x() - 16, point.y() - 16, 32, 32);
+        QMutableEventPoint::setEllipseDiameters(tp, {16, 16});
+        QMutableEventPoint::setPosition(tp, point);
+        QMutableEventPoint::setScenePosition(tp, point);
+        QMutableEventPoint::setGlobalPosition(tp, QAEngine::instance()->getPlatform()->mapToGlobal(point));
+        QMutableEventPoint::setTimestamp(tp, m_eta->elapsed());
+        QMutableEventPoint::setPressTimestamp(tp, m_eta->elapsed());
+
+        m_touchPoints.insert(sender(), tp);
+
+        QEvent::Type type = QEvent::TouchEnd;
+        if (m_touchPoints.size() > 1)
+        {
+            type = QEvent::TouchUpdate;
+        }
+
+        QTouchEvent te(type, m_touchDevice, m_mods, m_touchPoints.values());
+        te.setTimestamp(m_eta->elapsed());
+
+        m_touchPoints.remove(sender());
+
+        emit touchEvent(te);
+#else
         QTouchEvent::TouchPoint tp = m_touchPoints.value(sender());
 
         tp.setState(Qt::TouchPointReleased);
@@ -555,6 +665,7 @@ void QAKeyMouseEngine::onReleased(const QPointF point)
         m_touchPoints.remove(sender());
 
         emit touchEvent(te);
+#endif
     }
     else
     {
@@ -597,6 +708,36 @@ void QAKeyMouseEngine::onMousePressed(const QPointF &point, int button)
     qCDebug(categoryKeyMouseEngine) << Q_FUNC_INFO << point;
     if (m_mode == TouchEventMode)
     {
+#if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)
+        int pointId = getNextPointId();
+
+        QEventPoint tp(pointId, m_touchDevice);
+        QMutableEventPoint::setState(tp, QEventPoint::Pressed);
+
+        QRectF rect(point.x() - 16, point.y() - 16, 32, 32);
+        QMutableEventPoint::setEllipseDiameters(tp, {16, 16});
+        QMutableEventPoint::setPosition(tp, point);
+        QMutableEventPoint::setScenePosition(tp, point);
+        QMutableEventPoint::setGlobalPosition(tp, QAEngine::instance()->getPlatform()->mapToGlobal(point));
+        QMutableEventPoint::setTimestamp(tp, m_eta->elapsed());
+        QMutableEventPoint::setPressTimestamp(tp, m_eta->elapsed());
+
+        m_touchPoints.insert(sender(), tp);
+
+        QEvent::Type type = QEvent::TouchBegin;
+        if (m_touchPoints.size() > 1)
+        {
+            type = QEvent::TouchUpdate;
+        }
+
+        QTouchEvent te(type, m_touchDevice, m_mods, m_touchPoints.values());
+        te.setTimestamp(m_eta->elapsed());
+
+        emit touchEvent(te);
+
+        QMutableEventPoint::setState(tp, QEventPoint::Stationary);
+        m_touchPoints.insert(sender(), tp);
+#else
         int pointId = getNextPointId();
 
         QTouchEvent::TouchPoint tp(pointId);
@@ -626,6 +767,7 @@ void QAKeyMouseEngine::onMousePressed(const QPointF &point, int button)
         m_touchPoints.insert(sender(), tp);
 
         emit touchEvent(te);
+#endif
     }
     else
     {
@@ -650,6 +792,32 @@ void QAKeyMouseEngine::onMouseReleased(const QPointF &point, int button)
     qCDebug(categoryKeyMouseEngine) << Q_FUNC_INFO << point;
     if (m_mode == TouchEventMode)
     {
+#if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)
+        QEventPoint tp = m_touchPoints.value(sender());
+        QMutableEventPoint::setState(tp, QEventPoint::Updated);
+
+        QRectF rect(point.x() - 16, point.y() - 16, 32, 32);
+        QMutableEventPoint::setEllipseDiameters(tp, {16, 16});
+        QMutableEventPoint::setPosition(tp, point);
+        QMutableEventPoint::setScenePosition(tp, point);
+        QMutableEventPoint::setGlobalPosition(tp, QAEngine::instance()->getPlatform()->mapToGlobal(point));
+        QMutableEventPoint::setTimestamp(tp, m_eta->elapsed());
+        QMutableEventPoint::setPressTimestamp(tp, m_eta->elapsed());
+
+        m_touchPoints.insert(sender(), tp);
+
+        QEvent::Type type = QEvent::TouchUpdate;
+
+        QTouchEvent te(type, m_touchDevice, m_mods, m_touchPoints.values());
+        te.setTimestamp(m_eta->elapsed());
+
+        m_touchPoints.remove(sender());
+
+        emit touchEvent(te);
+
+        QMutableEventPoint::setState(tp, QEventPoint::Stationary);
+        m_touchPoints.insert(sender(), tp);
+#else
         QTouchEvent::TouchPoint tp = m_touchPoints.value(sender());
 
         tp.setState(Qt::TouchPointReleased);
@@ -677,6 +845,7 @@ void QAKeyMouseEngine::onMouseReleased(const QPointF &point, int button)
         m_touchPoints.remove(sender());
 
         emit touchEvent(te);
+#endif
     }
     else
     {
@@ -701,6 +870,33 @@ void QAKeyMouseEngine::onMouseMoved(const QPointF &point)
     qCDebug(categoryKeyMouseEngine) << Q_FUNC_INFO << point;
     if (m_mode == TouchEventMode)
     {
+#if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)
+        QEventPoint tp = m_touchPoints.value(sender());
+        QMutableEventPoint::setState(tp, QEventPoint::Released);
+
+        QRectF rect(point.x() - 16, point.y() - 16, 32, 32);
+        QMutableEventPoint::setEllipseDiameters(tp, {16, 16});
+        QMutableEventPoint::setPosition(tp, point);
+        QMutableEventPoint::setScenePosition(tp, point);
+        QMutableEventPoint::setGlobalPosition(tp, QAEngine::instance()->getPlatform()->mapToGlobal(point));
+        QMutableEventPoint::setTimestamp(tp, m_eta->elapsed());
+        QMutableEventPoint::setPressTimestamp(tp, m_eta->elapsed());
+
+        m_touchPoints.insert(sender(), tp);
+
+        QEvent::Type type = QEvent::TouchEnd;
+        if (m_touchPoints.size() > 1)
+        {
+            type = QEvent::TouchUpdate;
+        }
+
+        QTouchEvent te(type, m_touchDevice, m_mods, m_touchPoints.values());
+        te.setTimestamp(m_eta->elapsed());
+
+        m_touchPoints.remove(sender());
+
+        emit touchEvent(te);
+#else
         QTouchEvent::TouchPoint tp = m_touchPoints.value(sender());
 
         tp.setState(Qt::TouchPointMoved);
@@ -728,6 +924,7 @@ void QAKeyMouseEngine::onMouseMoved(const QPointF &point)
         m_touchPoints.insert(sender(), tp);
 
         emit touchEvent(te);
+#endif
     }
     else
     {
@@ -747,6 +944,12 @@ void QAKeyMouseEngine::onMouseWheeled(const QPointF &delta, const QPointF &point
     else
     {
         QPoint globalPos = QAEngine::instance()->getPlatform()->mapToGlobal(point).toPoint();
+
+#if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)
+        QWheelEvent we(point, globalPos, delta.toPoint(), QPoint(),
+                    m_buttons, m_mods, Qt::ScrollUpdate,
+                    false);
+#else
         QWheelEvent we(point,
                        globalPos,
                        QPoint(),
@@ -756,6 +959,7 @@ void QAKeyMouseEngine::onMouseWheeled(const QPointF &delta, const QPointF &point
                        m_buttons,
                        m_mods
                        );
+#endif
         we.setTimestamp(m_eta->elapsed());
         emit wheelEvent(we);
     }
@@ -1078,7 +1282,7 @@ void EventWorker::startChain()
                 {
 
                     auto platform = QAEngine::instance()->getPlatform();
-                    auto& origin = action.value(QStringLiteral("origin"));
+                    const auto& origin = action.value(QStringLiteral("origin"));
                     QString itemId;
                     QVariantMap originMap = origin.toMap();
                     if (originMap.isEmpty())
