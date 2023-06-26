@@ -1894,27 +1894,10 @@ void GenericEnginePlatform::executeCommand_app_method(ITransportClient* socket,
         return;
     }
 
-    QGenericArgument arguments[10] = {QGenericArgument()};
-    for (int i = 0; i < params.length(); i++)
-    {
-        arguments[i] = QGenericArgument(params[i].typeName(), params[i].constData());
-    }
-
     QVariant reply;
-    bool result = QMetaObject::invokeMethod(item,
-                                            method.toLatin1().constData(),
-                                            Qt::DirectConnection,
-                                            Q_RETURN_ARG(QVariant, reply),
-                                            arguments[0],
-                                            arguments[1],
-                                            arguments[2],
-                                            arguments[3],
-                                            arguments[4],
-                                            arguments[5],
-                                            arguments[6],
-                                            arguments[7],
-                                            arguments[8],
-                                            arguments[9]);
+    bool implemented = false;
+    bool result = QAEngine::metaInvokeRet(item, method, params, &implemented, &reply);
+
     qCDebug(categoryGenericEnginePlatform)
         << Q_FUNC_INFO << "app:method result:" << (result ? "true" : "false");
     socketReply(socket, result ? reply : false, result ? 0 : 1);

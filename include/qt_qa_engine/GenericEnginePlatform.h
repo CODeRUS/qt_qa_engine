@@ -260,19 +260,10 @@ private slots:
 
     // execute_%1 methods
     void executeCommand_window_frameSize(ITransportClient* socket);
-    void executeCommand_app_method_type(ITransportClient* socket,
-                                        const QString& elementId,
-                                        const QString& method,
-                                        const QString& returnType,
-                                        const QVariantList& params);
     void executeCommand_app_method(ITransportClient* socket,
                                    const QString& elementId,
                                    const QString& method,
                                    const QVariantList& params);
-    void executeCommand_app_method_void(ITransportClient* socket,
-                                        const QString& elementId,
-                                        const QString& method,
-                                        const QVariantList& params);
     void executeCommand_app_dumpTree(ITransportClient* socket);
     void executeCommand_app_setAttribute(ITransportClient* socket,
                                          const QString& elementId,

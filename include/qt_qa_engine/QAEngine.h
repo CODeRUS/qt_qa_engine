@@ -27,6 +27,12 @@ public:
                            const QVariantList& params,
                            bool* implemented = nullptr);
 
+    static bool metaInvokeRet(QObject* object,
+                              const QString& methodName,
+                              const QVariantList& params,
+                              bool* implemented = nullptr,
+                              QVariant *ret = nullptr);
+
     void addItem(QObject* o);
     void removeItem(QObject* o);
 

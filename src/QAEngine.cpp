@@ -311,16 +311,23 @@ bool QAEngine::metaInvoke(ITransportClient* socket,
                 for (int i = 0; i < (method.parameterCount() - 1) && args.count() > i; i++) {
                     QMetaType paramType = method.parameterMetaType(i + 1);
                     if (args[i].metaType() != paramType) {
-                        args[i].convert(paramType);
+                        if (args[i].canConvert(paramType)) {
+                            args[i].convert(paramType);
+                        } else if (paramType == QMetaType(QMetaType::Type::QVariant)) {
+                            args[i] = QVariant::fromValue(args[i]);
+                        } else {
+                            qWarning() << Q_FUNC_INFO << "Can't convert" << args[i].metaType() << args[i] << "to" << paramType;
+                            return false;
+                        }
                     }
                     data.push_back(args[i].data());
-                    names.push_back(args[i].metaType().name());
-                    types.push_back(args[i].metaType().iface());
+                    names.push_back(paramType.name());
+                    types.push_back(paramType.iface());
                 }
 
                 QMetaMethodInvoker::InvokeFailReason reason =
-                        QMetaMethodInvoker::invokeImpl(method, object, Qt::DirectConnection,
-                                                       data.size(), &data[0], &names[0], &types[0]);
+                    QMetaMethodInvoker::invokeImpl(method, object, Qt::DirectConnection,
+                                                   data.size(), &data[0], &names[0], &types[0]);
 
                 if (int(reason) <= 0) {
                     return reason == QMetaMethodInvoker::InvokeFailReason::None;
@@ -355,6 +362,137 @@ bool QAEngine::metaInvoke(ITransportClient* socket,
                                                  arguments[6],
                                                  arguments[7],
                                                  arguments[8]);
+#endif
+            }
+        }
+    } while ((mo = mo->superClass()));
+
+    if (implemented)
+    {
+        *implemented = false;
+    }
+    return false;
+}
+
+
+bool QAEngine::metaInvokeRet(QObject* object,
+                             const QString& methodName,
+                             const QVariantList& params,
+                             bool* implemented,
+                             QVariant *ret)
+{
+    auto mo = object->metaObject();
+    do
+    {
+        for (int i = mo->methodOffset(); i < mo->methodOffset() + mo->methodCount(); i++)
+        {
+            if (mo->method(i).name() == methodName.toLatin1())
+            {
+                if (implemented)
+                {
+                    *implemented = true;
+                }
+
+                const QMetaMethod method = mo->method(i);
+                QVariantList args = params;
+
+#if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)
+
+                std::vector<const void*> data;
+                std::vector<const char*> names;
+                std::vector<const QtPrivate::QMetaTypeInterface*> types;
+
+                QMetaMethodReturnArgument r = {};
+                const QMetaType returnType = method.returnMetaType();
+                if (!ret || returnType == QMetaType(QMetaType::Type::Void)) {
+                    data.push_back(r.data);
+                    names.push_back(r.name);
+                    types.push_back(r.metaType);
+                } else if (ret) {
+                    ret->setValue(QVariant(returnType, ret->data()));
+
+                    data.push_back(ret->data());
+                    names.push_back(returnType.name());
+                    types.push_back(returnType.iface());
+                }
+
+                for (int i = 0; i < method.parameterCount() && args.count() > i; i++) {
+                    QMetaType paramType = method.parameterMetaType(i);
+                    if (args[i].metaType() != paramType) {
+                        if (args[i].canConvert(paramType)) {
+                            args[i].convert(paramType);
+                        } else if (paramType == QMetaType(QMetaType::Type::QVariant)) {
+                            args[i] = QVariant::fromValue(args[i]);
+                        } else {
+                            qWarning() << Q_FUNC_INFO << "Can't convert" << args[i].metaType() << args[i] << "to" << paramType;
+                            return false;
+                        }
+                    }
+                    data.push_back(args[i].data());
+                    names.push_back(paramType.name());
+                    types.push_back(paramType.iface());
+                }
+
+                QMetaMethodInvoker::InvokeFailReason reason =
+                    QMetaMethodInvoker::invokeImpl(method, object, Qt::DirectConnection,
+                                                   data.size(), &data[0], &names[0], &types[0]);
+
+                if (int(reason) <= 0) {
+                    return reason == QMetaMethodInvoker::InvokeFailReason::None;
+                } else {
+                    qWarning() << Q_FUNC_INFO << "method not found!";
+                    return false;
+                }
+#else
+                QGenericArgument arguments[10] = {QGenericArgument()};
+                for (int i = 0; i < method.parameterCount() && args.count() > i; i++)
+                {
+                    int paramType = method.parameterType(i);
+                    if (paramType == QMetaType::QVariant)
+                    {
+                        arguments[i] = Q_ARG(QVariant, args[i]);
+                    }
+                    else
+                    {
+                        if (paramType != args[i].type() && args[i].canConvert(paramType)) {
+                            args[i].convert(paramType);
+                        }
+                        arguments[i] = qVariantToArgument(args[i]);
+                    }
+                }
+
+                int returnType =  method.returnType();
+                if (returnType == QMetaType::Void) {
+                    return QMetaObject::invokeMethod(object,
+                                                     methodName.toLatin1().constData(),
+                                                     Qt::DirectConnection,
+                                                     arguments[0],
+                                                     arguments[1],
+                                                     arguments[2],
+                                                     arguments[3],
+                                                     arguments[4],
+                                                     arguments[5],
+                                                     arguments[6],
+                                                     arguments[7],
+                                                     arguments[8],
+                                                     arguments[9]);
+                } else {
+                    ret->setValue(QVariant(QVariant::nameToType(QMetaType::typeName(returnType))));
+                    return QMetaObject::invokeMethod(object,
+                                                     methodName.toLatin1().constData(),
+                                                     Qt::DirectConnection,
+                                                     QGenericReturnArgument(ret->typeName(), ret->data()),
+                                                     arguments[0],
+                                                     arguments[1],
+                                                     arguments[2],
+                                                     arguments[3],
+                                                     arguments[4],
+                                                     arguments[5],
+                                                     arguments[6],
+                                                     arguments[7],
+                                                     arguments[8],
+                                                     arguments[9]);
+                }
 #endif
             }
         }
