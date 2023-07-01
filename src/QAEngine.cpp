@@ -107,8 +107,13 @@ IEnginePlatform* QAEngine::getPlatform(bool silent)
 
 void QAEngine::initializeSocket()
 {
+#if QT_VERSION >= QT_VERSION_CHECK(5, 14, 0)
     qCDebug(categoryEngine) << Q_FUNC_INFO << Qt::endl
                             << "name:" << qApp->arguments().first() << Qt::endl
+#else
+    qCDebug(categoryEngine) << Q_FUNC_INFO << endl
+                            << "name:" << qApp->arguments().first() << endl
+#endif
                             << "pid:" << qApp->applicationPid();
 
     qCDebug(categoryEngine) << "QAPreload Version:"
@@ -132,7 +137,11 @@ void QAEngine::initializeEngine()
     }
     s_engineLoaded = true;
 
+#if QT_VERSION >= QT_VERSION_CHECK(5, 14, 0)
     qCDebug(categoryEngine) << Q_FUNC_INFO << Qt::endl;
+#else
+    qCDebug(categoryEngine) << Q_FUNC_INFO << endl;
+#endif
 
     qtHookData[QHooks::RemoveQObject] = reinterpret_cast<quintptr>(&QAEngine::objectRemoved);
     qtHookData[QHooks::AddQObject] = reinterpret_cast<quintptr>(&QAEngine::objectCreated);

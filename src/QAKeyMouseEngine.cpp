@@ -1176,7 +1176,11 @@ void EventWorker::startChain()
     QVariantList keyArgs;
     QVariantList wheelArgs;
 
+#if QT_VERSION >= QT_VERSION_CHECK(5, 7, 0)
     for (const QVariant& paramsVar : qAsConst(m_actions))
+#else
+    for (const QVariant& paramsVar : m_actions)
+#endif
     {
         const QVariantMap param = paramsVar.toMap();
         if (param.value(QStringLiteral("type")).toString() == QLatin1String("pointer"))

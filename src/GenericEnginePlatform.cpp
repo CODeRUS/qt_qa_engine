@@ -791,9 +791,13 @@ bool GenericEnginePlatform::waitForPropertyChange(QObject* item,
         return false;
     }
     const QMetaProperty prop = item->metaObject()->property(propertyIndex);
-    const auto propValue = prop.read(item);
+    const auto propValue = prop.read(item);    
+#if QT_VERSION >= QT_VERSION_CHECK(5, 14, 0)
     bool isNullptr = value.canConvert<std::nullptr_t>();
     if (value.isValid() && !isNullptr && propValue == value)
+#else
+    if (value.isValid() && propValue == value)
+#endif
     {
         return false;
     }
@@ -937,11 +941,13 @@ void GenericEnginePlatform::onPropertyChanged()
         loop->quit();
         return;
     }
+#if QT_VERSION >= QT_VERSION_CHECK(5, 14, 0)
     if (propertyValue.canConvert<std::nullptr_t>())
     {
         loop->quit();
         return;
     }
+#endif
     const QVariant property = item->property(propertyName.toLatin1().constData());
     if (property == propertyValue)
     {
@@ -1977,7 +1983,12 @@ void fileHandler(QtMsgType type, const QMessageLogContext&, const QString& msg)
             txt = QString("Info: %1").arg(msg);
             break;
     }
+
+#if QT_VERSION >= QT_VERSION_CHECK(5, 14, 0)
     ts << txt << Qt::endl;
+#else
+    ts << txt << endl;
+#endif
     outFile.flush();
 }
 

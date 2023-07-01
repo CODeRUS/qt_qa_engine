@@ -1,14 +1,3 @@
-##
- # Copyright (c) New Cloud Technologies, Ltd., 2014-2022
- #
- # You can not use the contents of the file in any way without
- # New Cloud Technologies, Ltd. written permission.
- #
- # To obtain such a permit, you should contact New Cloud Technologies, Ltd.
- # at http://ncloudtech.com/contact.html
- #
-##
-
 TARGET = qaengine
 TEMPLATE = lib
 
@@ -23,6 +12,25 @@ android {
 QT += core core-private network
 CONFIG += plugin
 #CONFIG += c++11
+
+
+contains(DEFINES, Q_OS_SAILFISH) {
+
+isEmpty(PROJECT_PACKAGE_VERSION) {
+    QAPRELOAD_VERSION = "2.0.0-dev"
+} else {
+    QAPRELOAD_VERSION = $$PROJECT_PACKAGE_VERSION
+}
+
+CONFIG += c++11
+CONFIG += link_pkgconfig
+
+TARGETPATH = $$[QT_INSTALL_LIBS]
+target.path = $$TARGETPATH
+
+INSTALLS = target
+
+}
 
 equals(QT_MAJOR_VERSION, 6) {
     QT += core5compat
@@ -80,3 +88,11 @@ RESOURCES += \
     qml/qtqaengine.qrc
 
 CONFIG += qtquickcompiler
+
+
+contains(DEFINES, Q_OS_SAILFISH) {
+    message("Building for SFOS")
+
+    OTHER_FILES += \
+        rpm/qt_qa_engine.spec
+}

@@ -193,7 +193,11 @@ bool QuickEnginePlatform::isItemVisible(QObject* item)
 
 QPointF QuickEnginePlatform::mapToGlobal(const QPointF &point)
 {
+#if QT_VERSION >= QT_VERSION_CHECK(5, 7, 0)
     return m_rootQuickItem->mapToGlobal(point);
+#else
+    return m_rootQuickItem->mapToScene(point);
+#endif
 }
 
 QVariant QuickEnginePlatform::executeJS(const QString& jsCode, QQuickItem* item)

@@ -64,8 +64,13 @@ void QAEngineSocketClient::readClient(ITransportClient* client)
 
 void QAEngineSocketClient::onConnected()
 {
+#if QT_VERSION >= QT_VERSION_CHECK(5, 14, 0)
     qCDebug(categorySocketClient) << Q_FUNC_INFO << Qt::endl
                                   << "client:" << m_client << Qt::endl
+#else
+    qCDebug(categorySocketClient) << Q_FUNC_INFO << endl
+                                  << "client:" << m_client << endl
+#endif
                                   << "is connected:" << m_client->isConnected();
 
     QJsonObject root;
@@ -80,8 +85,13 @@ void QAEngineSocketClient::onConnected()
     auto success = m_client->waitForBytesWritten();
     qCDebug(categorySocketClient) << "Writing to bridge socket:" << success;
 
+#if QT_VERSION >= QT_VERSION_CHECK(5, 14, 0)
     qCDebug(categorySocketClient) << Q_FUNC_INFO << Qt::endl
                                   << "ready read:" << m_client->waitForReadyRead() << Qt::endl;
+#else
+    qCDebug(categorySocketClient) << Q_FUNC_INFO << endl
+                                  << "ready read:" << m_client->waitForReadyRead() << endl;
+#endif
 
     auto available = m_client->bytesAvailable();
     qCDebug(categorySocketClient) << Q_FUNC_INFO << m_client << available;
