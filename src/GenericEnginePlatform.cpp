@@ -15,7 +15,11 @@
 #include <QJsonValue>
 #include <QMetaMethod>
 #include <QRegularExpression>
+#if QT_VERSION < QT_VERSION_CHECK(6, 0, 0)
 #include <QRegExp>
+#else
+#include <QRegularExpression>
+#endif
 #include <QStandardPaths>
 #include <QTimer>
 #include <QXmlStreamWriter>
@@ -885,8 +889,13 @@ bool GenericEnginePlatform::checkMatch(const QString& pattern, const QString& va
     }
     if (pattern.startsWith('/'))
     {
+#if QT_VERSION < QT_VERSION_CHECK(6, 0, 0)
         QRegExp rx(pattern);
         if (rx.exactMatch(value))
+#else
+        QRegularExpression rx(QRegularExpression::anchoredPattern(pattern));
+        if (rx.match(value).hasMatch())
+#endif
         {
             return true;
         }
@@ -894,9 +903,14 @@ bool GenericEnginePlatform::checkMatch(const QString& pattern, const QString& va
     }
     else if (pattern.contains('*'))
     {
+#if QT_VERSION < QT_VERSION_CHECK(6, 0, 0)
         QRegExp rx(pattern);
         rx.setPatternSyntax(QRegExp::Wildcard);
         if (rx.exactMatch(value))
+#else
+        QRegularExpression rx(QRegularExpression::wildcardToRegularExpression(pattern));
+        if (rx.match(value).hasMatch())
+#endif
         {
             return true;
         }
