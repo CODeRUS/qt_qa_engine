@@ -136,7 +136,7 @@ list(APPEND
 # so it is convenient to set the CMAKE_INCLUDE_CURRENT_DIR variable.
 # @see https://cmake.org/cmake/help/v3.1/manual/cmake-qt.7.html#automoc
 
-add_library (${PROJECT_NAME}
+add_library (${PROJECT_NAME} SHARED
     ${QA_LIB_CONFIG}
     ${QRC_RESOURCES}
     ${${PROJECT_NAME}_SOURCES}
