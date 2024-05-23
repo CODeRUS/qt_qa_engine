@@ -418,13 +418,14 @@ QObject* GenericEnginePlatform::getObject(const QString& elementId)
 QString GenericEnginePlatform::getText(QObject* item)
 {
     static const char* textProperties[] = {
+        "text",
         "label",
         "title",
-        "description",
-        "placeholderText",
-        "text",
         "value",
         "name",
+        "displayText",
+        "placeholderText",
+        "description",
         "toolTip",
     };
 
