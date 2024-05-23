@@ -174,7 +174,7 @@ void GenericEnginePlatform::findByProperty(ITransportClient* socket,
     qCDebug(categoryGenericEnginePlatform)
         << Q_FUNC_INFO << socket << propertyName << propertyValue << multiple << parentItem;
 
-    QObjectList items = findItemsByProperty(propertyName, propertyValue, parentItem);
+    QObjectList items = findItemsByProperty(propertyName, propertyValue, parentItem, multiple);
     elementReply(socket, items, multiple);
 }
 
@@ -204,9 +204,9 @@ QObject* GenericEnginePlatform::findItemById(const QString& id, QObject* parentI
 }
 
 QObjectList GenericEnginePlatform::findItemsByObjectName(const QString& objectName,
-                                                         QObject* parentItem)
+                                                         QObject* parentItem, bool multiple)
 {
-    qCDebug(categoryGenericEnginePlatformFind) << Q_FUNC_INFO << objectName << parentItem;
+    qCDebug(categoryGenericEnginePlatformFind) << Q_FUNC_INFO << objectName << parentItem << multiple;
     QObjectList items;
 
     if (!parentItem)
@@ -217,20 +217,27 @@ QObjectList GenericEnginePlatform::findItemsByObjectName(const QString& objectNa
     if (checkMatch(objectName, parentItem->objectName()))
     {
         items.append(parentItem);
+        if (!multiple) {
+            return items;
+        }
     }
 
     for (QObject* child : childrenList(parentItem))
     {
         QObjectList recursiveItems = findItemsByObjectName(objectName, child);
         items.append(recursiveItems);
+        if (!items.isEmpty() && !multiple) {
+            return items;
+        }
     }
     return items;
 }
 
 QObjectList GenericEnginePlatform::findItemsByClassName(const QString& className,
-                                                        QObject* parentItem)
+                                                        QObject* parentItem,
+                                                        bool multiple)
 {
-    qCDebug(categoryGenericEnginePlatformFind) << Q_FUNC_INFO << className << parentItem;
+    qCDebug(categoryGenericEnginePlatformFind) << Q_FUNC_INFO << className << parentItem << multiple;
 
     QObjectList items;
 
@@ -242,22 +249,29 @@ QObjectList GenericEnginePlatform::findItemsByClassName(const QString& className
     if (checkMatch(className, getClassName(parentItem)))
     {
         items.append(parentItem);
+        if (!multiple) {
+            return items;
+        }
     }
 
     for (QObject* child : childrenList(parentItem))
     {
         QObjectList recursiveItems = findItemsByClassName(className, child);
         items.append(recursiveItems);
+        if (!items.isEmpty() && !multiple) {
+            return items;
+        }
     }
     return items;
 }
 
 QObjectList GenericEnginePlatform::findItemsByProperty(const QString& propertyName,
                                                        const QVariant& propertyValue,
-                                                       QObject* parentItem)
+                                                       QObject* parentItem,
+                                                       bool multiple)
 {
     qCDebug(categoryGenericEnginePlatformFind)
-        << Q_FUNC_INFO << propertyName << propertyValue << parentItem;
+        << Q_FUNC_INFO << propertyName << propertyValue << parentItem << multiple;
 
     QObjectList items;
 
@@ -269,21 +283,28 @@ QObjectList GenericEnginePlatform::findItemsByProperty(const QString& propertyNa
     if (parentItem->property(propertyName.toLatin1().constData()) == propertyValue)
     {
         items.append(parentItem);
+        if (!multiple) {
+            return items;
+        }
     }
 
     for (QObject* child : childrenList(parentItem))
     {
-        QObjectList recursiveItems = findItemsByProperty(propertyName, propertyValue, child);
+        QObjectList recursiveItems = findItemsByProperty(propertyName, propertyValue, child, multiple);
         items.append(recursiveItems);
+        if (!items.isEmpty() && !multiple) {
+            return items;
+        }
     }
     return items;
 }
 
 QObjectList GenericEnginePlatform::findItemsByText(const QString& text,
                                                    bool partial,
-                                                   QObject* parentItem)
+                                                   QObject* parentItem,
+                                                   bool multiple)
 {
-    qCDebug(categoryGenericEnginePlatformFind) << Q_FUNC_INFO << text << partial << parentItem;
+    qCDebug(categoryGenericEnginePlatformFind) << Q_FUNC_INFO << text << partial << parentItem << multiple;
 
     QObjectList items;
 
@@ -296,12 +317,18 @@ QObjectList GenericEnginePlatform::findItemsByText(const QString& text,
     if ((partial && itemText.contains(text)) || (!partial && itemText == text))
     {
         items.append(parentItem);
+        if (!multiple) {
+            return items;
+        }
     }
 
     for (QObject* child : childrenList(parentItem))
     {
         QObjectList recursiveItems = findItemsByText(text, partial, child);
         items.append(recursiveItems);
+        if (!items.isEmpty() && !multiple) {
+            return items;
+        }
     }
     return items;
 }
@@ -1748,7 +1775,7 @@ void GenericEnginePlatform::findStrategy_objectName(ITransportClient* socket,
                                                     bool multiple,
                                                     QObject* parentItem)
 {
-    QObjectList items = findItemsByObjectName(selector, parentItem);
+    QObjectList items = findItemsByObjectName(selector, parentItem, multiple);
     qCDebug(categoryGenericEnginePlatform) << Q_FUNC_INFO << selector << multiple << items;
     elementReply(socket, items, multiple);
 }
@@ -1768,7 +1795,7 @@ void GenericEnginePlatform::findStrategy_name(ITransportClient* socket,
                                               bool multiple,
                                               QObject* parentItem)
 {
-    QObjectList items = findItemsByText(selector, false, parentItem);
+    QObjectList items = findItemsByText(selector, false, parentItem, multiple);
     qCDebug(categoryGenericEnginePlatform) << Q_FUNC_INFO << selector << multiple << items;
     elementReply(socket, items, multiple);
 }
@@ -2011,6 +2038,12 @@ void GenericEnginePlatform::executeCommand_app_click(ITransportClient *socket, d
     socketReply(socket, QString());
 }
 
+void GenericEnginePlatform::executeCommand_app_click(ITransportClient *socket, qlonglong mousex, qlonglong mousey)
+{
+    clickPoint(mousex, mousey);
+    socketReply(socket, QString());
+}
+
 void GenericEnginePlatform::executeCommand_app_exit(ITransportClient* socket, double code)
 {
     socketReply(socket, QString());
@@ -2031,7 +2064,19 @@ void GenericEnginePlatform::executeCommand_app_pressAndHold(ITransportClient *so
     socketReply(socket, QString());
 }
 
+void GenericEnginePlatform::executeCommand_app_pressAndHold(ITransportClient *socket, qlonglong mousex, qlonglong mousey)
+{
+    pressAndHold(mousex, mousey, 1500);
+    socketReply(socket, QString());
+}
+
 void GenericEnginePlatform::executeCommand_app_move(ITransportClient *socket, double fromx, double fromy, double tox, double toy)
+{
+    mouseMove(fromx, fromy, tox, toy);
+    socketReply(socket, QString());
+}
+
+void GenericEnginePlatform::executeCommand_app_move(ITransportClient *socket, qlonglong fromx, qlonglong fromy, qlonglong tox, qlonglong toy)
 {
     mouseMove(fromx, fromy, tox, toy);
     socketReply(socket, QString());

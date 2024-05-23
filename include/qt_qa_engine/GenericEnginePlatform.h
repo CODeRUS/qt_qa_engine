@@ -57,14 +57,20 @@ protected:
 
     virtual QList<QObject*> childrenList(QObject* parentItem) = 0;
     QObject* findItemById(const QString& id, QObject* parentItem = nullptr);
-    QObjectList findItemsByObjectName(const QString& objectName, QObject* parentItem = nullptr);
-    QObjectList findItemsByClassName(const QString& className, QObject* parentItem = nullptr);
+    QObjectList findItemsByObjectName(const QString& objectName,
+                                      QObject* parentItem = nullptr,
+                                      bool multiple = true);
+    QObjectList findItemsByClassName(const QString& className,
+                                     QObject* parentItem = nullptr,
+                                     bool multiple= true);
     QObjectList findItemsByProperty(const QString& propertyName,
                                     const QVariant& propertyValue,
-                                    QObject* parentItem = nullptr);
+                                    QObject* parentItem = nullptr,
+                                    bool multiple = true);
     QObjectList findItemsByText(const QString& text,
                                 bool partial = true,
-                                QObject* parentItem = nullptr);
+                                QObject* parentItem = nullptr,
+                                bool multiple = true);
     QObjectList findItemsByXpath(const QString& xpath, QObject* parentItem = nullptr);
     QObjectList filterVisibleItems(QObjectList items);
 
@@ -286,10 +292,13 @@ private slots:
     void executeCommand_app_setLoggingFilter(ITransportClient* socket, const QString& rules);
     void executeCommand_app_installFileLogger(ITransportClient* socket, const QString& filePath);
     void executeCommand_app_click(ITransportClient* socket, double mousex, double mousey);
+    void executeCommand_app_click(ITransportClient* socket, qlonglong mousex, qlonglong mousey);
     void executeCommand_app_exit(ITransportClient* socket, double code);
     void executeCommand_app_crash(ITransportClient* socket);
     void executeCommand_app_pressAndHold(ITransportClient* socket, double mousex, double mousey);
+    void executeCommand_app_pressAndHold(ITransportClient* socket, qlonglong mousex, qlonglong mousey);
     void executeCommand_app_move(ITransportClient* socket, double fromx, double fromy, double tox, double toy);
+    void executeCommand_app_move(ITransportClient* socket, qlonglong fromx, qlonglong fromy, qlonglong tox, qlonglong toy);
 
 
     void executeCommand_app_listSignals(ITransportClient* socket,
