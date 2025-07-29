@@ -17,6 +17,7 @@ public:
     explicit GenericEnginePlatform(QWindow* window);
     QWindow* window() override;
     QObject* rootObject() override;
+
     void socketReply(ITransportClient* socket, const QVariant& value, int status = 0) override;
     void elementReply(ITransportClient* socket,
                       QObjectList elements,
@@ -36,6 +37,8 @@ public:
     QPoint getClickPosition(QObject *item) override;
 
     void activateWindow() override;
+
+    virtual QString getObjectId(QObject *item) override;
 
 protected:
     friend class QAKeyMouseEngine;
@@ -60,6 +63,9 @@ protected:
     QObjectList findItemsByObjectName(const QString& objectName,
                                       QObject* parentItem = nullptr,
                                       bool multiple = true);
+    QObjectList findItemsByObjectId(const QString& objectId,
+                                    QObject* parentItem = nullptr,
+                                    bool multiple = true);
     QObjectList findItemsByClassName(const QString& className,
                                      QObject* parentItem = nullptr,
                                      bool multiple= true);
@@ -94,6 +100,7 @@ protected:
                                const QString& propertyName,
                                const QVariant& value,
                                int timeout = 10000);
+    bool waitForWindowChange(int timeout = 10000);
     bool registerSignal(QObject* item,
                         const QString& signalName);
     bool unregisterSignal(QObject* item,
@@ -110,8 +117,13 @@ protected:
     QHash<QString, QStringList> m_blacklistedProperties;
     QHash<QString, int> m_signalCounter;
 
+public slots:
+    virtual void focusWindowChanged(QWindow *w) override;
+
 signals:
     void ready();
+    void focusLost();
+    void focusRestored();
 
 private:
     void execute(ITransportClient* socket, const QString& methodName, const QVariantList& params);
@@ -243,7 +255,11 @@ private slots:
                          const QString& selector,
                          bool multiple = false,
                          QObject* parentItem = nullptr);
-    void findStrategy_objectName(ITransportClient* socket,
+    void findStrategy_objectname(ITransportClient* socket,
+                                 const QString& selector,
+                                 bool multiple = false,
+                                 QObject* parentItem = nullptr);
+    void findStrategy_objectid(ITransportClient* socket,
                                  const QString& selector,
                                  bool multiple = false,
                                  QObject* parentItem = nullptr);
@@ -265,6 +281,9 @@ private slots:
                             QObject* parentItem = nullptr);
 
     // execute_%1 methods
+    void executeCommand_activateApp(ITransportClient* socket, const QVariant& appName);
+    void executeCommand_submit(ITransportClient* socket, const QVariant& element);
+
     void executeCommand_window_frameSize(ITransportClient* socket);
     void executeCommand_app_method(ITransportClient* socket,
                                    const QString& elementId,
@@ -280,6 +299,8 @@ private slots:
                                                   const QString& propertyName,
                                                   const QVariant& value,
                                                   qlonglong timeout = 3000);
+    void executeCommand_app_waitForWindowChange(ITransportClient* socket,
+                                                qlonglong timeout = 3000);
     void executeCommand_app_registerSignal(ITransportClient* socket,
                                                 const QString& elementId,
                                                 const QString& signalName);

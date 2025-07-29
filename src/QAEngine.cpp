@@ -24,6 +24,7 @@
 #include <QJsonDocument>
 #include <QJsonObject>
 #include <QMetaMethod>
+#include <QProcessEnvironment>
 #include <QTcpSocket>
 #include <QTimer>
 #include <QWindow>
@@ -184,6 +185,13 @@ void QAEngine::onFocusWindowChanged(QWindow* window)
 
     if (!window)
     {
+        for (auto w : qApp->topLevelWindows())
+        {
+            if (w->property("visible").toBool()) {
+                s_lastFocusWindow = w;
+                break;
+            }
+        }
         return;
     }
 
@@ -209,6 +217,7 @@ void QAEngine::onFocusWindowChanged(QWindow* window)
             return;
         }
         connect(platform, &IEnginePlatform::ready, this, &QAEngine::onPlatformReady);
+        connect(qGuiApp, &QGuiApplication::focusWindowChanged, platform, &IEnginePlatform::focusWindowChanged);
         connect(window,
                 &QWindow::destroyed,
                 [window]()
@@ -220,6 +229,7 @@ void QAEngine::onFocusWindowChanged(QWindow* window)
                 });
         QTimer::singleShot(0, platform, &IEnginePlatform::initialize);
 
+        qDebug() << "!!! new platform !!!" << platform << window;
         s_windows.insert(window, platform);
     }
 
@@ -258,13 +268,22 @@ QAEngine* QAEngine::instance()
 
 QAEngine::QAEngine(QObject* parent)
     : QObject(parent)
-    , m_socketServer(new TCPSocketServer(8888, this))
 {
+    int port = QProcessEnvironment::systemEnvironment().value("QAENGINE_PORT", "8888").toInt();
+    // QString defaultRules = "autoqa.qaengine.*.debug=false\n"
+    //                        "autoqa.qaengine.engine.debug=true\n"
+    //                        "autoqa.qaengine.platform.generic=true\n"
+    //                        "autoqa.qaengine.platform.quick=true\n"
+    //                        "autoqa.qaengine.keymouse=true\n"
+    //                        "autoqa.qaengine.transport.server.debug=true";
+    // QString filterRules = QProcessEnvironment::systemEnvironment().value("QAENGINE_FILTER_RULES", defaultRules);
+    qDebug() << "QAEngine port:" << port;
+    m_socketServer = new TCPSocketServer(port, this);
+
     qRegisterMetaType<QTcpSocket*>();
     qRegisterMetaType<ITransportClient*>();
     qRegisterMetaType<ITransportServer*>();
-    QLoggingCategory::setFilterRules("autoqa.qaengine.*.debug=false\n"
-                                     "autoqa.qaengine.transport.server.debug=true");
+    // QLoggingCategory::setFilterRules(filterRules);
 
     connect(m_socketServer, &ITransportServer::commandReceived, this, &QAEngine::initializeEngine);
     connect(m_socketServer, &ITransportServer::commandReceived, this, &QAEngine::processCommand);

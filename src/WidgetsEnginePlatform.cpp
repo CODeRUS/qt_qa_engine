@@ -66,6 +66,12 @@ QList<QObject*> WidgetsEnginePlatform::childrenList(QObject* parentItem)
     }
 
     QList<QObject*> result;
+
+    // if (parentItem == m_rootWindow)
+    // {
+    //     result.append(m_rootWidget);
+    // }
+
     QWidget* widget = qobject_cast<QWidget*>(parentItem);
     if (widget)
     {

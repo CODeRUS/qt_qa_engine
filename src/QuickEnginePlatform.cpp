@@ -30,6 +30,11 @@ QList<QObject*> QuickEnginePlatform::childrenList(QObject* parentItem)
 {
     QList<QObject*> result;
 
+    if (parentItem == m_rootQuickWindow)
+    {
+        result.append(m_rootQuickItem);
+    }
+
     QQuickItem* quick = qobject_cast<QQuickItem*>(parentItem);
     if (!quick)
     {
@@ -60,9 +65,9 @@ QuickEnginePlatform::QuickEnginePlatform(QWindow* window)
 {
     Q_INIT_RESOURCE(qtqaengine);
 
-//#if defined(Q_OS_ANDROID) || defined(MO_OS_IOS)
+#if defined(Q_OS_ANDROID) || defined(MO_OS_IOS)
     m_keyMouseEngine->setMode(QAKeyMouseEngine::TouchEventMode);
-//#endif
+#endif
 }
 
 QQuickItem* QuickEnginePlatform::findParentFlickable(QQuickItem* rootItem)
@@ -200,6 +205,25 @@ QPointF QuickEnginePlatform::mapToGlobal(const QPointF &point)
 #endif
 }
 
+QString QuickEnginePlatform::getObjectId(QObject *item)
+{
+    auto engine = qmlEngine(item);
+    if (!engine) {
+        return QString();
+    }
+
+    auto context = qmlContext(item);
+    if (!context) {
+        context = engine->rootContext();
+    }
+
+    if (!context) {
+        return QString();
+    }
+
+    return context->nameForObject(item);
+}
+
 QVariant QuickEnginePlatform::executeJS(const QString& jsCode, QQuickItem* item)
 {
     qCDebug(categoryQuickEnginePlatform) << Q_FUNC_INFO << jsCode << item;
@@ -281,7 +305,7 @@ void QuickEnginePlatform::initialize()
     item->setZ(lastChildren->z() + 1);
 
     m_touchIndicator = item;
-    qGuiApp->installEventFilter(this);
+    m_rootWindow->installEventFilter(this);
 
     emit ready();
 }

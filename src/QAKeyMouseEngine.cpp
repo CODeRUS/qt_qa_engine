@@ -320,21 +320,21 @@ QAPendingEvent* QAKeyMouseEngine::move(
 void QAKeyMouseEngine::pressEnter()
 {
 #if (!defined(MO_OS_ANDROID) && !defined(MO_OS_IOS))
-    QAEngine::instance()->getPlatform()->activateWindow();
+    // QAEngine::instance()->getPlatform()->activateWindow();
 
     QEventLoop loop;
     QTimer::singleShot(100, &loop, &QEventLoop::quit);
     loop.exec();
 #endif
 
-    sendKeyPress('\n', Qt::Key_Enter);
-    sendKeyRelease('\n', Qt::Key_Enter);
+    sendKeyPress('\n', Qt::Key_Return);
+    sendKeyRelease('\n', Qt::Key_Return);
 }
 
 QAPendingEvent* QAKeyMouseEngine::performMultiAction(const QVariantList& multiActions)
 {
 #if (!defined(MO_OS_ANDROID) && !defined(MO_OS_IOS))
-    QAEngine::instance()->getPlatform()->activateWindow();
+    // QAEngine::instance()->getPlatform()->activateWindow();
 
     QEventLoop loop;
     QTimer::singleShot(100, &loop, &QEventLoop::quit);
@@ -383,7 +383,7 @@ QAPendingEvent* QAKeyMouseEngine::performMultiAction(const QVariantList& multiAc
 QAPendingEvent* QAKeyMouseEngine::performTouchAction(const QVariantList& actions)
 {
 #if (!defined(MO_OS_ANDROID) && !defined(MO_OS_IOS))
-    QAEngine::instance()->getPlatform()->activateWindow();
+    // QAEngine::instance()->getPlatform()->activateWindow();
 
     QEventLoop loop;
     QTimer::singleShot(100, &loop, &QEventLoop::quit);
@@ -412,7 +412,7 @@ QAPendingEvent* QAKeyMouseEngine::performChainActions(const QVariantList& action
 {
     qCDebug(categoryKeyMouseEngine) << Q_FUNC_INFO << actions;
 #if (!defined(MO_OS_ANDROID) && !defined(MO_OS_IOS))
-    QAEngine::instance()->getPlatform()->activateWindow();
+    // QAEngine::instance()->getPlatform()->activateWindow();
 
     QEventLoop loop;
     QTimer::singleShot(100, &loop, &QEventLoop::quit);
@@ -928,7 +928,7 @@ void QAKeyMouseEngine::onMouseMoved(const QPointF &point)
     }
     else
     {
-        QMouseEvent me(QEvent::MouseMove, point, QAEngine::instance()->getPlatform()->mapToGlobal(point), Qt::NoButton, m_buttons, m_mods);
+        QMouseEvent me(QEvent::MouseMove, point, point, QAEngine::instance()->getPlatform()->mapToGlobal(point), Qt::NoButton, m_buttons, m_mods);
         me.setTimestamp(m_eta->elapsed());
         emit mouseEvent(me);
     }
@@ -1176,8 +1176,10 @@ void EventWorker::startChain()
     QVariantList keyArgs;
     QVariantList wheelArgs;
 
-#if QT_VERSION >= QT_VERSION_CHECK(5, 7, 0)
-    for (const QVariant& paramsVar : qAsConst(m_actions))
+#if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)
+    for (const QVariant& paramsVar : std::as_const(m_actions))
+#elif QT_VERSION >= QT_VERSION_CHECK(5, 7, 0)
+        for (const QVariant& paramsVar : qAsConst(m_actions))
 #else
     for (const QVariant& paramsVar : m_actions)
 #endif
@@ -1217,7 +1219,7 @@ void EventWorker::startChain()
     qCDebug(categoryKeyMouseEngine) << Q_FUNC_INFO << mouseActions;
     qCDebug(categoryKeyMouseEngine) << Q_FUNC_INFO << wheelActions;
 
-    if (keyActions.size() != mouseActions.size())
+    if (keyActions.size() > 0 && mouseActions.size() > 0 && keyActions.size() != mouseActions.size())
     {
         qCWarning(categoryKeyMouseEngine)
             << Q_FUNC_INFO << "Found two actions lists with mismatching size!";
@@ -1284,7 +1286,6 @@ void EventWorker::startChain()
 
                 if (action.contains(QStringLiteral("origin")))
                 {
-
                     auto platform = QAEngine::instance()->getPlatform();
                     const auto& origin = action.value(QStringLiteral("origin"));
                     QString itemId;
@@ -1322,19 +1323,30 @@ void EventWorker::startChain()
 
                 for (const auto& point : movePoints)
                 {
+                    qDebug() << Q_FUNC_INFO << "send mouseMoved:" << point;
                     emit mouseMoved(point);
                 }
 
                 previousPoint = QPointF(posX, posY);
+
+                const int duration = action.value(QStringLiteral("duration"), "0").toInt();
+                if (duration > 0)
+                {
+                    QEventLoop loop;
+                    QTimer::singleShot(duration, &loop, &QEventLoop::quit);
+                    loop.exec();
+                }
             }
             else if (type == QLatin1String("pointerDown"))
             {
                 int button = action.value(QStringLiteral("button"), 0).toInt();
+                qDebug() << Q_FUNC_INFO << "send mousePressed:" << previousPoint;
                 emit mousePressed(previousPoint, button);
             }
             else if (type == QLatin1String("pointerUp"))
             {
                 int button = action.value(QStringLiteral("button"), 0).toInt();
+                qDebug() << Q_FUNC_INFO << "send mouseReleased:" << previousPoint;
                 emit mouseReleased(previousPoint, button);
 
                 previousPoint = QPointF();

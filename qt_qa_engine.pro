@@ -13,7 +13,6 @@ QT += core core-private network
 CONFIG += plugin
 #CONFIG += c++11
 
-
 contains(DEFINES, Q_OS_SAILFISH) {
 
 isEmpty(PROJECT_PACKAGE_VERSION) {
@@ -32,10 +31,6 @@ INSTALLS = target
 
 }
 
-equals(QT_MAJOR_VERSION, 6) {
-    QT += core5compat
-}
-
 qtHaveModule(xmlpatterns) {
     QT += xmlpatterns
     DEFINES += MO_USE_QXMLPATTERNS
@@ -49,7 +44,7 @@ qtHaveModule(qml) {
     HEADERS += include/qt_qa_engine/QuickEnginePlatform.h
 }
 
-qtHaveModule(widgets) {
+qtHaveModule(widgetsD) {
     QT += widgets widgets-private
     DEFINES += MO_USE_QWIDGETS
 

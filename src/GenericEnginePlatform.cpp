@@ -15,7 +15,10 @@
 #include <QJsonValue>
 #include <QMetaMethod>
 #include <QRegularExpression>
+#if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)
+#else
 #include <QRegExp>
+#endif
 #include <QStandardPaths>
 #include <QTimer>
 #include <QXmlStreamWriter>
@@ -74,6 +77,18 @@ QObject* GenericEnginePlatform::rootObject()
     return m_rootObject;
 }
 
+void GenericEnginePlatform::focusWindowChanged(QWindow *w)
+{
+    if (w == m_rootWindow)
+    {
+        emit focusRestored();
+    }
+    else
+    {
+        emit focusLost();
+    }
+}
+
 void GenericEnginePlatform::socketReply(ITransportClient* socket, const QVariant& value, int status)
 {
     QByteArray data;
@@ -104,6 +119,8 @@ void GenericEnginePlatform::elementReply(ITransportClient* socket,
         }
         const QString uId = uniqueId(item);
         m_items.insert(uId, item);
+
+        qDebug() << "!!! insert !!!" << this << item << uId << m_rootWindow;
 
         QVariantMap element;
         element.insert(QStringLiteral("ELEMENT"), uId);
@@ -225,6 +242,36 @@ QObjectList GenericEnginePlatform::findItemsByObjectName(const QString& objectNa
     for (QObject* child : childrenList(parentItem))
     {
         QObjectList recursiveItems = findItemsByObjectName(objectName, child);
+        items.append(recursiveItems);
+        if (!items.isEmpty() && !multiple) {
+            return items;
+        }
+    }
+    return items;
+}
+
+QObjectList GenericEnginePlatform::findItemsByObjectId(const QString &objectId, QObject *parentItem, bool multiple)
+{
+    qCDebug(categoryGenericEnginePlatformFind) << Q_FUNC_INFO << objectId << parentItem << multiple;
+
+    QObjectList items;
+
+    if (!parentItem)
+    {
+        parentItem = rootObject();
+    }
+
+    if (checkMatch(objectId, getObjectId(parentItem)))
+    {
+        items.append(parentItem);
+        if (!multiple) {
+            return items;
+        }
+    }
+
+    for (QObject* child : childrenList(parentItem))
+    {
+        QObjectList recursiveItems = findItemsByObjectId(objectId, child);
         items.append(recursiveItems);
         if (!items.isEmpty() && !multiple) {
             return items;
@@ -466,6 +513,11 @@ void GenericEnginePlatform::activateWindow()
     m_rootWindow->setWindowState(Qt::WindowState::WindowActive);
 }
 
+QString GenericEnginePlatform::getObjectId(QObject *)
+{
+    return QString();
+}
+
 QJsonObject GenericEnginePlatform::dumpObject(QObject* item, int depth)
 {
     if (!item)
@@ -481,6 +533,9 @@ QJsonObject GenericEnginePlatform::dumpObject(QObject* item, int depth)
 
     const QString id = uniqueId(item);
     object.insert(QStringLiteral("id"), QJsonValue(id));
+
+    const QString objectId = getObjectId(item);
+    object.insert(QStringLiteral("objectId"), QJsonValue(objectId));
 
     auto mo = item->metaObject();
     do
@@ -504,9 +559,17 @@ QJsonObject GenericEnginePlatform::dumpObject(QObject* item, int depth)
         std::sort(v.begin(), v.end(), variantPairCompare);
         for (auto& i : v)
         {
-            if (!object.contains(i.first) && i.second.canConvert<QString>())
+            if (object.contains(i.first))
+            {
+                continue;
+            }
+            else if (i.second.canConvert<QString>())
             {
                 object.insert(i.first, QJsonValue::fromVariant(i.second));
+            }
+            else if (i.second.canConvert<qint64>())
+            {
+                object.insert(i.first, i.second.toLongLong());
             }
         }
     } while ((mo = mo->superClass()));
@@ -815,19 +878,27 @@ bool GenericEnginePlatform::waitForPropertyChange(QObject* item,
     if (propertyIndex < 0)
     {
         qCWarning(categoryGenericEnginePlatform)
-            << Q_FUNC_INFO << item << "property" << propertyName << "is not valid!";
+            << Q_FUNC_INFO << item << "property" << propertyName << "is not found!";
         return false;
     }
     const QMetaProperty prop = item->metaObject()->property(propertyIndex);
-    const auto propValue = prop.read(item);    
 #if QT_VERSION >= QT_VERSION_CHECK(5, 14, 0)
     bool isNullptr = value.canConvert<std::nullptr_t>();
-    if (value.isValid() && !isNullptr && propValue == value)
+    if (!value.isValid() || isNullptr)
 #else
-    if (value.isValid() && propValue == value)
+    if (!value.isValid())
 #endif
     {
+        qCWarning(categoryGenericEnginePlatform)
+            << Q_FUNC_INFO << item << "property" << propertyName << "is not valid!";
         return false;
+    }
+    const auto propValue = prop.read(item);
+    if (propValue == value)
+    {
+        qCWarning(categoryGenericEnginePlatform)
+                << Q_FUNC_INFO << item << "property" << propertyName << "value is same!" << propValue;
+        return true;
     }
     if (!prop.hasNotifySignal())
     {
@@ -847,6 +918,20 @@ bool GenericEnginePlatform::waitForPropertyChange(QObject* item,
     timer.start(timeout);
     int result = loop.exec();
     disconnect(item, prop.notifySignal(), this, propertyChanged);
+
+    return result == 0;
+}
+
+bool GenericEnginePlatform::waitForWindowChange(int timeout)
+{
+    qCDebug(categoryGenericEnginePlatform) << Q_FUNC_INFO << timeout;
+
+    QEventLoop loop;
+    QTimer timer;
+    connect(this, &GenericEnginePlatform::focusLost, &loop, &QEventLoop::quit);
+    connect(&timer, &QTimer::timeout, this, [&loop]() { loop.exit(1); });
+    timer.start(timeout);
+    int result = loop.exec();
 
     return result == 0;
 }
@@ -917,8 +1002,13 @@ bool GenericEnginePlatform::checkMatch(const QString& pattern, const QString& va
     }
     if (pattern.startsWith('/'))
     {
+#if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)
+        QRegularExpression rx(QRegularExpression::anchoredPattern(pattern));
+        if (rx.match(value).hasMatch())
+#else
         QRegExp rx(pattern);
         if (rx.exactMatch(value))
+#endif
         {
             return true;
         }
@@ -926,9 +1016,15 @@ bool GenericEnginePlatform::checkMatch(const QString& pattern, const QString& va
     }
     else if (pattern.contains('*'))
     {
+#if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)
+        QRegularExpression rx(QRegularExpression::anchoredPattern(pattern),
+                              QRegularExpression::CaseInsensitiveOption);
+        if (rx.match(value).hasMatch())
+#else
         QRegExp rx(pattern);
         rx.setPatternSyntax(QRegExp::Wildcard);
         if (rx.exactMatch(value))
+#endif
         {
             return true;
         }
@@ -1008,7 +1104,7 @@ void GenericEnginePlatform::onTouchEvent(const QTouchEvent& event)
 #if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)
     auto e = new QTouchEvent(event.type(), static_cast<const QPointingDevice*>(event.device()), event.modifiers(), event.points());
 
-    auto *mut = QMutableTouchEvent::from(e);
+    auto *mut = static_cast<QMutableTouchEvent *>(e);
     mut->setTarget(m_rootWindow);
 
     QCoreApplication::sendEvent(m_rootWindow, e);
@@ -1033,7 +1129,7 @@ void GenericEnginePlatform::onMouseEvent(const QMouseEvent& event)
                                              event.timestamp(),
 #if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)
                                              event.position(),
-                                             event.scenePosition(),
+                                             event.globalPosition(),
 #else
                                              event.localPos(),
                                              event.screenPos(),
@@ -1304,12 +1400,12 @@ void GenericEnginePlatform::getAttributeCommand(ITransportClient* socket,
         QVariant reply;
         if (attribute == "abs_x")
         {
-            auto a = getAbsGeometry(item);
+            auto a = getAbsPosition(item);
             reply = a.x();
         }
         else if (attribute == "abs_y")
         {
-            auto a = getAbsGeometry(item);
+            auto a = getAbsPosition(item);
             reply = a.y();
         }
         else if (attribute == "mainTextProperty")
@@ -1323,6 +1419,10 @@ void GenericEnginePlatform::getAttributeCommand(ITransportClient* socket,
         else if (attribute == "objectName")
         {
             reply = item->objectName();
+        }
+        else if (attribute == "objectId")
+        {
+            reply = getObjectId(item);
         }
         else
         {
@@ -1682,8 +1782,18 @@ void GenericEnginePlatform::executeCommand(ITransportClient* socket,
 {
     qWarning() << Q_FUNC_INFO << socket << command << params;
 
-    const QString fixCommand = QString(command).replace(QChar(':'), QChar('_'));
-    const QString methodName = QStringLiteral("executeCommand_%1").arg(fixCommand);
+    QString executeCommand;
+
+    if (command.startsWith("/* submitForm */")) {
+        executeCommand = "submit";
+    } else {
+        executeCommand = QString(command)
+                         .replace("mobile: ", "")
+                         .replace(": ", "_")
+                         .replace(":", "_");
+    }
+
+    const QString methodName = QStringLiteral("executeCommand_%1").arg(executeCommand);
     execute(socket, methodName, params);
 }
 
@@ -1693,7 +1803,10 @@ void GenericEnginePlatform::executeAsyncCommand(ITransportClient* socket,
 {
     qCDebug(categoryGenericEnginePlatform) << Q_FUNC_INFO << socket << command << params;
 
-    const QString fixCommand = QString(command).replace(QChar(':'), QChar('_'));
+    const QString fixCommand = QString(command)
+                                       .replace("mobile: ", "")
+                                       .replace(": ", "_")
+                                       .replace(":", "_");
     const QString methodName =
         QStringLiteral("executeCommand_%1").arg(fixCommand); // executeCommandAsync_ ?
     execute(socket, methodName, params);
@@ -1771,12 +1884,19 @@ void GenericEnginePlatform::findStrategy_id(ITransportClient* socket,
     elementReply(socket, {item}, multiple);
 }
 
-void GenericEnginePlatform::findStrategy_objectName(ITransportClient* socket,
+void GenericEnginePlatform::findStrategy_objectname(ITransportClient* socket,
                                                     const QString& selector,
                                                     bool multiple,
                                                     QObject* parentItem)
 {
     QObjectList items = findItemsByObjectName(selector, parentItem, multiple);
+    qCDebug(categoryGenericEnginePlatform) << Q_FUNC_INFO << selector << multiple << items;
+    elementReply(socket, items, multiple);
+}
+
+void GenericEnginePlatform::findStrategy_objectid(ITransportClient *socket, const QString &selector, bool multiple, QObject *parentItem)
+{
+    QObjectList items = findItemsByObjectId(selector, parentItem, multiple);
     qCDebug(categoryGenericEnginePlatform) << Q_FUNC_INFO << selector << multiple << items;
     elementReply(socket, items, multiple);
 }
@@ -1796,7 +1916,15 @@ void GenericEnginePlatform::findStrategy_name(ITransportClient* socket,
                                               bool multiple,
                                               QObject* parentItem)
 {
-    QObjectList items = findItemsByText(selector, false, parentItem, multiple);
+    QObjectList items;
+    if (selector.startsWith("*") && selector.endsWith("*"))
+    {
+        items = findItemsByText(selector.mid(1, selector.length() - 2), true, parentItem, multiple);
+    }
+    else
+    {
+        items = findItemsByText(selector, false, parentItem, multiple);
+    }
     qCDebug(categoryGenericEnginePlatform) << Q_FUNC_INFO << selector << multiple << items;
     elementReply(socket, items, multiple);
 }
@@ -1829,6 +1957,36 @@ void GenericEnginePlatform::findStrategy_xpath(ITransportClient* socket,
     QObjectList items = findItemsByXpath(selector, parentItem);
     qCDebug(categoryGenericEnginePlatform) << Q_FUNC_INFO << selector << multiple << items;
     elementReply(socket, items, multiple);
+}
+
+void GenericEnginePlatform::executeCommand_activateApp(ITransportClient *socket, const QVariant &appName)
+{
+    qCDebug(categoryGenericEnginePlatform) << Q_FUNC_INFO << socket << appName;
+
+    // if (appName != QAEngine::processName())
+    // {
+    //     qCWarning(categoryGenericEnginePlatform)
+    //     << Q_FUNC_INFO << appName << "is not" << QAEngine::processName();
+    //     socketReply(socket, QString(), 1);
+    //     return;
+    // }
+
+    if (!m_rootWindow)
+    {
+        qCWarning(categoryGenericEnginePlatform) << Q_FUNC_INFO << "No window!";
+        return;
+    }
+
+    activateWindow();
+
+    socketReply(socket, QString());
+}
+
+void GenericEnginePlatform::executeCommand_submit(ITransportClient *socket, const QVariant &element)
+{
+    QString elementId = element.toMap().first().toString();
+    qCDebug(categoryGenericEnginePlatform) << Q_FUNC_INFO << elementId;
+    submitCommand(socket, elementId);
 }
 
 void GenericEnginePlatform::executeCommand_window_frameSize(ITransportClient *socket)
@@ -1871,7 +2029,7 @@ void GenericEnginePlatform::executeCommand_app_dumpTree(ITransportClient* socket
     qCDebug(categoryGenericEnginePlatform) << Q_FUNC_INFO << socket;
 
 
-    QJsonObject reply = recursiveDumpTree(rootObject());
+    QJsonObject reply = recursiveDumpTree(m_rootWindow);
     socketReply(socket,
                 qCompress(QJsonDocument(reply).toJson(QJsonDocument::Compact), 9).toBase64());
 }
@@ -1904,8 +2062,17 @@ void GenericEnginePlatform::executeCommand_app_waitForPropertyChange(ITransportC
     }
     else
     {
+        qWarning() << "!!! no item !!!" << this << elementId;
         socketReply(socket, QString(), 1);
     }
+}
+
+void GenericEnginePlatform::executeCommand_app_waitForWindowChange(ITransportClient *socket, qlonglong timeout)
+{
+    qCDebug(categoryGenericEnginePlatform) << Q_FUNC_INFO << socket << timeout;
+
+    bool result = waitForWindowChange(timeout);
+    socketReply(socket, result);
 }
 
 void GenericEnginePlatform::executeCommand_app_registerSignal(ITransportClient *socket, const QString &elementId, const QString &signalName)
