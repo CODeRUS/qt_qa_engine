@@ -1,4 +1,3 @@
-// Copyright (c) 2019-2020 Open Mobile Platform LLC.
 #pragma once
 
 #include <QHash>

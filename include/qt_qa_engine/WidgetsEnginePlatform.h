@@ -1,4 +1,3 @@
-// Copyright (c) 2019-2020 Open Mobile Platform LLC.
 #pragma once
 
 #include <qt_qa_engine/GenericEnginePlatform.h>
@@ -32,6 +31,7 @@ public slots:
     QSize getSize(QObject* item) override;
     bool isItemEnabled(QObject* item) override;
     bool isItemVisible(QObject* item) override;
+    qreal itemOpacity(QObject *) override;
 
 protected:
     QList<QObject*> childrenList(QObject* parentItem) override;

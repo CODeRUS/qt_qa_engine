@@ -1,4 +1,3 @@
-// Copyright (c) 2019-2020 Open Mobile Platform LLC.
 #pragma once
 
 #include <qt_qa_engine/IEnginePlatform.h>
@@ -80,13 +79,14 @@ protected:
     QObjectList findItemsByXpath(const QString& xpath, QObject* parentItem = nullptr);
     QObjectList filterVisibleItems(QObjectList items);
 
-    QJsonObject dumpObject(QObject* item, int depth = 0);
-    QJsonObject recursiveDumpTree(QObject* rootItem, int depth = 0);
+    QJsonObject dumpObject(QObject* item, const QVariantList &filters, int depth = 0);
+    QJsonObject recursiveDumpTree(QObject* rootItem, const QVariantList &filters, int depth = 0);
     bool recursiveDumpXml(QXmlStreamWriter* writer, QObject* rootItem, int depth = 0);
 
     virtual void grabScreenshot(ITransportClient* socket,
                                 QObject* item,
                                 bool fillBackground = false) = 0;
+    void waitForClick(ITransportClient* socket, QObject*);
     void clickItem(QObject* item);
 
     void clickPoint(float posx, float posy);
@@ -124,6 +124,7 @@ signals:
     void ready();
     void focusLost();
     void focusRestored();
+    void pointClicked(const QPoint &pos);
 
 private:
     void execute(ITransportClient* socket, const QString& methodName, const QVariantList& params);
@@ -290,6 +291,7 @@ private slots:
                                    const QString& method,
                                    const QVariantList& params);
     void executeCommand_app_dumpTree(ITransportClient* socket);
+    void executeCommand_app_dumpTreeFilter(ITransportClient* socket, const QVariantList &filters);
     void executeCommand_app_setAttribute(ITransportClient* socket,
                                          const QString& elementId,
                                          const QString& attribute,

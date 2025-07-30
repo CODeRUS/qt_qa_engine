@@ -1,4 +1,3 @@
-// Copyright (c) 2019-2020 Open Mobile Platform LLC.
 #include <qt_qa_engine/QAEngine.h>
 #include <qt_qa_engine/QAEngineSocketClient.h>
 #include <qt_qa_engine/TCPSocketClient.h>

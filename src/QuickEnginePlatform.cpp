@@ -1,4 +1,3 @@
-// Copyright (c) 2019-2020 Open Mobile Platform LLC.
 #include <qt_qa_engine/ITransportClient.h>
 #include <qt_qa_engine/QAEngine.h>
 #include <qt_qa_engine/QAKeyMouseEngine.h>
@@ -194,6 +193,18 @@ bool QuickEnginePlatform::isItemVisible(QObject* item)
         return false;
     }
     return q->isVisible();
+}
+
+qreal QuickEnginePlatform::itemOpacity(QObject *item)
+{
+    qCDebug(categoryQuickEnginePlatform) << Q_FUNC_INFO << item;
+
+    QQuickItem* q = qobject_cast<QQuickItem*>(item);
+    if (!q)
+    {
+        return 1.0;
+    }
+    return q->opacity();
 }
 
 QPointF QuickEnginePlatform::mapToGlobal(const QPointF &point)

@@ -1,4 +1,3 @@
-// Copyright (c) 2019-2020 Open Mobile Platform LLC.
 #include <qt_qa_engine/ITransportClient.h>
 #include <qt_qa_engine/QAEngine.h>
 #include <qt_qa_engine/QAKeyMouseEngine.h>
@@ -913,6 +912,11 @@ bool WidgetsEnginePlatform::isItemVisible(QObject* item)
         return go->isVisible();
     }
     return false;
+}
+
+qreal WidgetsEnginePlatform::itemOpacity(QObject *)
+{
+    return 1.0;
 }
 
 void WidgetsEnginePlatform::grabScreenshot(ITransportClient* socket,

@@ -1,4 +1,3 @@
-// Copyright (c) 2019-2020 Open Mobile Platform LLC.
 #pragma once
 #include <QObject>
 #include <QPoint>
@@ -36,6 +35,7 @@ public:
     virtual QRect getAbsGeometry(QObject* item) = 0;
     virtual bool isItemEnabled(QObject* item) = 0;
     virtual bool isItemVisible(QObject* item) = 0;
+    virtual qreal itemOpacity(QObject *item) = 0;
     virtual void activateWindow() = 0;
     virtual QPointF mapToGlobal(const QPointF &point) = 0;
     virtual QString getObjectId(QObject *item) = 0;

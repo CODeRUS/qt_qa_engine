@@ -518,15 +518,51 @@ QString GenericEnginePlatform::getObjectId(QObject *)
     return QString();
 }
 
-QJsonObject GenericEnginePlatform::dumpObject(QObject* item, int depth)
+QJsonObject GenericEnginePlatform::dumpObject(QObject* item, const QVariantList &filters, int depth)
 {
     if (!item)
     {
         qCritical() << Q_FUNC_INFO << "No object!";
-        return QJsonObject();
+        return {};
     }
 
     QJsonObject object;
+
+    object.insert(QStringLiteral("enabled"), QJsonValue(isItemEnabled(item)));
+    object.insert(QStringLiteral("visible"), QJsonValue(isItemVisible(item)));
+    object.insert(QStringLiteral("opacity"), QJsonValue(itemOpacity(item)));
+
+    QVariantList extraFilters;
+    if (item != m_rootWindow) {
+        for (const auto &filterVar : filters) {
+            auto filter = filterVar.toMap();
+            const auto filterKey = filter.value(QStringLiteral("key")).toString();
+            if (object.contains(filterKey)) {
+                const auto objectValue = object.value(filterKey).toVariant();
+                const auto filterValue = filter.value(QStringLiteral("value"));
+                const auto filterOp = filter.value(QStringLiteral("op")).toString();
+                if (filterOp == "eq") {
+                    if (objectValue != filterValue) {
+                        return {};
+                    }
+                } else if (filterOp == "ne") {
+                    if (objectValue == filterValue) {
+                        return {};
+                    }
+                } else if (filterOp == "gt") {
+                    if (variantCompare(objectValue, filterValue)) {
+                        return {};
+                    }
+                } else if (filterOp == "lt") {
+                    if (!variantCompare(objectValue, filterValue)) {
+                        return {};
+                    }
+                }
+            } else {
+                extraFilters.append(filter);
+            }
+        }
+    }
 
     const QString className = getClassName(item);
     object.insert(QStringLiteral("classname"), QJsonValue(className));
@@ -586,30 +622,54 @@ QJsonObject GenericEnginePlatform::dumpObject(QObject* item, int depth)
     object.insert(QStringLiteral("abs_y"), QJsonValue(abs.y()));
 
     object.insert(QStringLiteral("objectName"), QJsonValue(item->objectName()));
-    if (!object.contains(QLatin1String("enabled")))
-    {
-        object.insert(QStringLiteral("enabled"), QJsonValue(isItemEnabled(item)));
-    }
-    if (!object.contains(QLatin1String("visible")))
-    {
-        object.insert(QStringLiteral("visible"), QJsonValue(isItemVisible(item)));
-    }
-
     object.insert(QStringLiteral("mainTextProperty"), getText(item));
+
+    if (item != m_rootWindow && !extraFilters.isEmpty()) {
+        for (const auto &filterVar : extraFilters) {
+            auto filter = filterVar.toMap();
+            const auto filterKey = filter.value(QStringLiteral("key")).toString();
+            if (object.contains(filterKey)) {
+                const auto objectValue = object.value(filterKey).toVariant();
+                const auto filterValue = filter.value(QStringLiteral("value"));
+                const auto filterOp = filter.value(QStringLiteral("op")).toString();
+                if (filterOp == "eq") {
+                    if (objectValue != filterValue) {
+                        return {};
+                    }
+                } else if (filterOp == "ne") {
+                    if (objectValue == filterValue) {
+                        return {};
+                    }
+                } else if (filterOp == "gt") {
+                    if (variantCompare(objectValue, filterValue)) {
+                        return {};
+                    }
+                } else if (filterOp == "lt") {
+                    if (!variantCompare(objectValue, filterValue)) {
+                        return {};
+                    }
+                }
+            }
+        }
+    }
 
     return object;
 }
 
-QJsonObject GenericEnginePlatform::recursiveDumpTree(QObject* rootItem, int depth)
+QJsonObject GenericEnginePlatform::recursiveDumpTree(QObject* rootItem, const QVariantList &filters, int depth)
 {
-    QJsonObject object = dumpObject(rootItem, depth);
+    QJsonObject object = dumpObject(rootItem, filters, depth);
     QJsonArray childArray;
+
+    if (object.isEmpty())
+        return {};
 
     int z = 0;
     for (QObject* child : childrenList(rootItem))
     {
-        QJsonObject childObject = recursiveDumpTree(child, ++z);
-        childArray.append(QJsonValue(childObject));
+        QJsonObject childObject = recursiveDumpTree(child, filters, ++z);
+        if (!childObject.isEmpty())
+            childArray.append(QJsonValue(childObject));
     }
     object.insert(QStringLiteral("children"), QJsonValue(childArray));
 
@@ -2024,12 +2084,17 @@ void GenericEnginePlatform::executeCommand_app_method(ITransportClient* socket,
     socketReply(socket, result ? reply : false, result ? 0 : 1);
 }
 
-void GenericEnginePlatform::executeCommand_app_dumpTree(ITransportClient* socket)
+void GenericEnginePlatform::executeCommand_app_dumpTree(ITransportClient *socket)
 {
-    qCDebug(categoryGenericEnginePlatform) << Q_FUNC_INFO << socket;
+    executeCommand_app_dumpTreeFilter(socket, {});
+}
+
+void GenericEnginePlatform::executeCommand_app_dumpTreeFilter(ITransportClient* socket, const QVariantList &filters)
+{
+    qCDebug(categoryGenericEnginePlatform) << Q_FUNC_INFO << socket << filters;
 
 
-    QJsonObject reply = recursiveDumpTree(m_rootWindow);
+    QJsonObject reply = recursiveDumpTree(m_rootWindow, filters);
     socketReply(socket,
                 qCompress(QJsonDocument(reply).toJson(QJsonDocument::Compact), 9).toBase64());
 }
