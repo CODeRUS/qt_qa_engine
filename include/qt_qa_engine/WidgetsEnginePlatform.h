@@ -36,6 +36,8 @@ public slots:
 protected:
     QList<QObject*> childrenList(QObject* parentItem) override;
 
+    QByteArray grabDirectScreenshot() override;
+
     void grabScreenshot(ITransportClient* socket,
                         QObject* item,
                         bool fillBackground = false) override;

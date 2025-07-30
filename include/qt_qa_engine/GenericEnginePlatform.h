@@ -9,6 +9,20 @@ class QKeyEvent;
 class QWindow;
 class QXmlStreamWriter;
 
+class AnalyzeEventFilter : public QObject
+{
+    Q_OBJECT
+
+public:
+    explicit AnalyzeEventFilter(QObject* parent = nullptr);
+
+signals:
+    void pressed(const QPoint &point);
+
+protected:
+    bool eventFilter(QObject* watched, QEvent* event) override;
+};
+
 class GenericEnginePlatform : public IEnginePlatform
 {
     Q_OBJECT
@@ -83,6 +97,8 @@ protected:
     QJsonObject recursiveDumpTree(QObject* rootItem, const QVariantList &filters, int depth = 0);
     bool recursiveDumpXml(QXmlStreamWriter* writer, QObject* rootItem, int depth = 0);
 
+    virtual QByteArray grabDirectScreenshot() = 0;
+
     virtual void grabScreenshot(ITransportClient* socket,
                                 QObject* item,
                                 bool fillBackground = false) = 0;
@@ -117,6 +133,10 @@ protected:
     QHash<QString, QStringList> m_blacklistedProperties;
     QHash<QString, int> m_signalCounter;
 
+    QVariantList m_lastFilters;
+    ITransportClient* m_analyzeSocket = nullptr;
+    AnalyzeEventFilter* m_analyzeEventFilter = nullptr;
+
 public slots:
     virtual void focusWindowChanged(QWindow *w) override;
 
@@ -124,7 +144,6 @@ signals:
     void ready();
     void focusLost();
     void focusRestored();
-    void pointClicked(const QPoint &pos);
 
 private:
     void execute(ITransportClient* socket, const QString& methodName, const QVariantList& params);
@@ -133,6 +152,8 @@ private slots:
     // own stuff
     void onPropertyChanged();
     void onSignalReceived();
+
+    void analyzePressed(const QPoint &point);
 
     // synthesized input events
     virtual void onTouchEvent(const QTouchEvent& event);
@@ -250,6 +271,9 @@ private slots:
                                        const QVariant& paramsArg) override;
 
     virtual void getTimeoutsCommand(ITransportClient* socket) override;
+
+    virtual void startAnalyzeCommand(ITransportClient* socket) override;
+    virtual void stopAnalyzeCommand(ITransportClient* socket) override;
 
     // findElement_%1 methods
     void findStrategy_id(ITransportClient* socket,

@@ -40,6 +40,8 @@ protected:
 
     QVariant executeJS(const QString& jsCode, QQuickItem* item);
 
+    QByteArray grabDirectScreenshot() override;
+
     void grabScreenshot(ITransportClient* socket,
                         QObject* item,
                         bool fillBackground = false) override;

@@ -382,6 +382,18 @@ bool QuickEnginePlatform::eventFilter(QObject* watched, QEvent* event)
     return QObject::eventFilter(watched, event);
 }
 
+QByteArray QuickEnginePlatform::grabDirectScreenshot()
+{
+    QByteArray arr;
+    QBuffer buffer(&arr);
+    QPixmap pix;
+
+    pix = QPixmap::fromImage(m_rootQuickWindow->grabWindow());
+    pix.save(&buffer, "PNG");
+
+    return arr;
+}
+
 void QuickEnginePlatform::grabScreenshot(ITransportClient* socket,
                                          QObject* item,
                                          bool fillBackground)

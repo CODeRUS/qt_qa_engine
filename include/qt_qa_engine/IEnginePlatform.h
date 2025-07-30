@@ -147,6 +147,9 @@ private slots:
     virtual void performActionsCommand(ITransportClient* socket, const QVariant& paramsArg) = 0;
     virtual void getTimeoutsCommand(ITransportClient* socket) = 0;
 
+    virtual void startAnalyzeCommand(ITransportClient* socket) = 0;
+    virtual void stopAnalyzeCommand(ITransportClient* socket) = 0;
+
 signals:
     void ready();
 };

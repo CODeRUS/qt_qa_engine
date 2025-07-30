@@ -1159,6 +1159,50 @@ void GenericEnginePlatform::onSignalReceived()
     }
 }
 
+void GenericEnginePlatform::analyzePressed(const QPoint &point)
+{
+    qCDebug(categoryGenericEnginePlatform) << Q_FUNC_INFO << point;
+
+    if (!m_analyzeSocket)
+        return;
+
+    m_analyzeSocket->write(QStringLiteral("pressed: %1,%2\n").arg(point.x()).arg(point.y()).toLatin1());
+    m_analyzeSocket->flush();
+
+    const auto reply = recursiveDumpTree(m_rootWindow, m_lastFilters);
+    const auto json = QJsonDocument(reply).toJson(QJsonDocument::Compact);
+    const auto jsonCompress = qCompress(json, 9);
+    m_analyzeSocket->write("dump start: ");
+    m_analyzeSocket->write(QByteArray::number(jsonCompress.size()));
+    m_analyzeSocket->write("\n");
+    m_analyzeSocket->flush();
+    m_analyzeSocket->waitForBytesWritten();
+
+    m_analyzeSocket->write(jsonCompress);
+    m_analyzeSocket->flush();
+    m_analyzeSocket->waitForBytesWritten();
+
+    m_analyzeSocket->write("\ndump end\n");
+    m_analyzeSocket->flush();
+    m_analyzeSocket->waitForBytesWritten();
+
+    const auto screen = grabDirectScreenshot();
+    const auto screenCompress = qCompress(screen, 9);
+    m_analyzeSocket->write("screen start: ");
+    m_analyzeSocket->write(QByteArray::number(screenCompress.size()));
+    m_analyzeSocket->write("\n");
+    m_analyzeSocket->flush();
+    m_analyzeSocket->waitForBytesWritten();
+
+    m_analyzeSocket->write(screenCompress);
+    m_analyzeSocket->flush();
+    m_analyzeSocket->waitForBytesWritten();
+
+    m_analyzeSocket->write("\nscreen end\n");
+    m_analyzeSocket->flush();
+    m_analyzeSocket->waitForBytesWritten();
+}
+
 void GenericEnginePlatform::onTouchEvent(const QTouchEvent& event)
 {
 #if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)
@@ -1934,6 +1978,40 @@ void GenericEnginePlatform::getTimeoutsCommand(ITransportClient* socket)
     socketReply(socket, reply);
 }
 
+void GenericEnginePlatform::startAnalyzeCommand(ITransportClient *socket)
+{
+    qCDebug(categoryGenericEnginePlatform) << Q_FUNC_INFO << socket;
+
+    if (m_analyzeSocket)
+        return;
+
+    m_analyzeSocket = socket;
+
+    if (!m_analyzeEventFilter) {
+        m_analyzeEventFilter = new AnalyzeEventFilter(this);
+        connect(m_analyzeEventFilter, &AnalyzeEventFilter::pressed,
+                this, &GenericEnginePlatform::analyzePressed, Qt::UniqueConnection);
+        m_rootWindow->installEventFilter(m_analyzeEventFilter);
+    }
+
+}
+
+void GenericEnginePlatform::stopAnalyzeCommand(ITransportClient *socket)
+{
+    qCDebug(categoryGenericEnginePlatform) << Q_FUNC_INFO << socket;
+
+    if (!m_analyzeSocket)
+        return;
+
+    m_analyzeSocket = nullptr;
+
+    if (m_analyzeEventFilter) {
+        m_rootWindow->removeEventFilter(m_analyzeEventFilter);
+        m_analyzeEventFilter->deleteLater();
+        m_analyzeEventFilter = nullptr;
+    }
+}
+
 void GenericEnginePlatform::findStrategy_id(ITransportClient* socket,
                                             const QString& selector,
                                             bool multiple,
@@ -2093,6 +2171,7 @@ void GenericEnginePlatform::executeCommand_app_dumpTreeFilter(ITransportClient* 
 {
     qCDebug(categoryGenericEnginePlatform) << Q_FUNC_INFO << socket << filters;
 
+    m_lastFilters = filters;
 
     QJsonObject reply = recursiveDumpTree(m_rootWindow, filters);
     socketReply(socket,
@@ -2343,4 +2422,58 @@ void GenericEnginePlatform::executeCommand_app_listSignals(ITransportClient *soc
     } while ((mo = mo->superClass()));
 
     socketReply(socket, result);
+}
+
+AnalyzeEventFilter::AnalyzeEventFilter(QObject *parent)
+    : QObject(parent)
+{
+
+}
+
+bool AnalyzeEventFilter::eventFilter(QObject *watched, QEvent *event)
+{
+
+    switch (event->type())
+    {
+    case QEvent::TouchBegin:
+    // case QEvent::TouchUpdate:
+    {
+        QTouchEvent* te = static_cast<QTouchEvent*>(event);
+#if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)
+        if (te->points().isEmpty())
+#else
+        if (te->touchPoints().isEmpty())
+#endif
+        {
+            break;
+        }
+#if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)
+        emit pressed(te->points().first().scenePosition().toPoint());
+#else
+        emit pressed(te->touchPoints().first().scenePosition().toPoint());
+#endif
+        break;
+    }
+    case QEvent::MouseButtonPress:
+    // case QEvent::MouseButtonDblClick:
+    // case QEvent::MouseMove:
+    {
+        QMouseEvent* me = static_cast<QMouseEvent*>(event);
+        if (me->buttons() == Qt::NoButton) {
+            break;
+        }
+        emit pressed(me->scenePosition().toPoint());
+        break;
+    }
+    // case QEvent::TouchEnd:
+    // case QEvent::TouchCancel:
+    // case QEvent::MouseButtonRelease:
+    // {
+    //     QMetaObject::invokeMethod(m_touchIndicator, "hide", Qt::QueuedConnection);
+    //     break;
+    // }
+    default:
+        break;
+    }
+    return QObject::eventFilter(watched, event);
 }

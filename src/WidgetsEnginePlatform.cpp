@@ -919,6 +919,24 @@ qreal WidgetsEnginePlatform::itemOpacity(QObject *)
     return 1.0;
 }
 
+QByteArray WidgetsEnginePlatform::grabDirectScreenshot()
+{
+    QByteArray arr;
+    QBuffer buffer(&arr);
+    QPixmap pix;
+
+#if QT_VERSION >= QT_VERSION_CHECK(5, 14, 0)
+    pix = m_rootWidget->screen()->grabWindow(
+        0, m_rootWindow->x(), m_rootWindow->y(), m_rootWindow->width(), m_rootWindow->height());
+#else
+    pix = m_rootWidget->grab();
+#endif
+
+    pix.save(&buffer, "PNG");
+
+    return arr;
+}
+
 void WidgetsEnginePlatform::grabScreenshot(ITransportClient* socket,
                                            QObject* item,
                                            bool fillBackground)
