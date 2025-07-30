@@ -228,6 +228,9 @@ void QAEngine::onFocusWindowChanged(QWindow* window)
                 });
         QTimer::singleShot(0, platform, &IEnginePlatform::initialize);
 
+        if (m_analyzeActive)
+            platform->startAnalyze(m_analyzeSocket);
+
         qDebug() << "!!! new platform !!!" << platform << window;
         s_windows.insert(window, platform);
     }
@@ -254,6 +257,16 @@ void QAEngine::onPlatformReady()
 void QAEngine::clientLost(ITransportClient* client)
 {
     qCDebug(categoryEngine) << Q_FUNC_INFO << client;
+
+    if (client == m_analyzeSocket) {
+        for (auto platform : s_windows)
+        {
+            platform->stopAnalyze();
+        }
+
+        m_analyzeActive = false;
+        m_analyzeSocket = nullptr;
+    }
 }
 
 QAEngine* QAEngine::instance()
@@ -269,20 +282,20 @@ QAEngine::QAEngine(QObject* parent)
     : QObject(parent)
 {
     int port = QProcessEnvironment::systemEnvironment().value("QAENGINE_PORT", "8888").toInt();
-    // QString defaultRules = "autoqa.qaengine.*.debug=false\n"
-    //                        "autoqa.qaengine.engine.debug=true\n"
+    QString defaultRules = "autoqa.qaengine.*.debug=false\n"
     //                        "autoqa.qaengine.platform.generic=true\n"
     //                        "autoqa.qaengine.platform.quick=true\n"
     //                        "autoqa.qaengine.keymouse=true\n"
-    //                        "autoqa.qaengine.transport.server.debug=true";
-    // QString filterRules = QProcessEnvironment::systemEnvironment().value("QAENGINE_FILTER_RULES", defaultRules);
+    //                        "autoqa.qaengine.transport.server.debug=true\n";
+                           "autoqa.qaengine.engine.debug=true\n";
+    QString filterRules = QProcessEnvironment::systemEnvironment().value("QAENGINE_FILTER_RULES", defaultRules);
     qDebug() << "QAEngine port:" << port;
     m_socketServer = new TCPSocketServer(port, this);
 
     qRegisterMetaType<QTcpSocket*>();
     qRegisterMetaType<ITransportClient*>();
     qRegisterMetaType<ITransportServer*>();
-    // QLoggingCategory::setFilterRules(filterRules);
+    QLoggingCategory::setFilterRules(filterRules);
 
     connect(m_socketServer, &ITransportServer::commandReceived, this, &QAEngine::initializeEngine);
     connect(m_socketServer, &ITransportServer::commandReceived, this, &QAEngine::processCommand);
@@ -585,9 +598,18 @@ void QAEngine::processCommand(ITransportClient* socket, const QByteArray& cmd)
         return;
     }
 
-    processAppiumCommand(socket,
-                         object.value(QStringLiteral("action")).toVariant().toString(),
-                         object.value(QStringLiteral("params")).toVariant().toList());
+    const auto action = object.value(QStringLiteral("action")).toVariant().toString();
+    const auto params = object.value(QStringLiteral("params")).toVariant().toList();
+
+    if (action == "startAnalyze") {
+        m_analyzeActive = true;
+        m_analyzeSocket = socket;
+    } else if (action == "stopAnalyze") {
+        m_analyzeActive = false;
+        m_analyzeSocket = nullptr;
+    }
+
+    processAppiumCommand(socket, action, params);
 }
 
 bool QAEngine::processAppiumCommand(ITransportClient* socket,

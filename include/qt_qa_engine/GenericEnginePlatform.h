@@ -53,6 +53,9 @@ public:
 
     virtual QString getObjectId(QObject *item) override;
 
+    void startAnalyze(ITransportClient* client) override;
+    void stopAnalyze() override;
+
 protected:
     friend class QAKeyMouseEngine;
 

@@ -52,5 +52,8 @@ private slots:
 private:
     explicit QAEngine(QObject* parent = nullptr);
     ITransportServer* m_socketServer = nullptr;
+
+    bool m_analyzeActive = false;
+    ITransportClient* m_analyzeSocket = nullptr;
 };
 

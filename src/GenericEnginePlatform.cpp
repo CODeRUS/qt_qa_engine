@@ -518,6 +518,39 @@ QString GenericEnginePlatform::getObjectId(QObject *)
     return QString();
 }
 
+void GenericEnginePlatform::startAnalyze(ITransportClient* socket)
+{
+    qCDebug(categoryGenericEnginePlatform) << Q_FUNC_INFO << socket;
+
+    if (m_analyzeSocket)
+        return;
+
+    m_analyzeSocket = socket;
+
+    if (!m_analyzeEventFilter) {
+        m_analyzeEventFilter = new AnalyzeEventFilter(this);
+        connect(m_analyzeEventFilter, &AnalyzeEventFilter::pressed,
+                this, &GenericEnginePlatform::analyzePressed, Qt::UniqueConnection);
+        m_rootWindow->installEventFilter(m_analyzeEventFilter);
+    }
+}
+
+void GenericEnginePlatform::stopAnalyze()
+{
+    qCDebug(categoryGenericEnginePlatform) << Q_FUNC_INFO;
+
+    if (!m_analyzeSocket)
+        return;
+
+    m_analyzeSocket = nullptr;
+
+    if (m_analyzeEventFilter) {
+        m_rootWindow->removeEventFilter(m_analyzeEventFilter);
+        m_analyzeEventFilter->deleteLater();
+        m_analyzeEventFilter = nullptr;
+    }
+}
+
 QJsonObject GenericEnginePlatform::dumpObject(QObject* item, const QVariantList &filters, int depth)
 {
     if (!item)
@@ -1982,34 +2015,14 @@ void GenericEnginePlatform::startAnalyzeCommand(ITransportClient *socket)
 {
     qCDebug(categoryGenericEnginePlatform) << Q_FUNC_INFO << socket;
 
-    if (m_analyzeSocket)
-        return;
-
-    m_analyzeSocket = socket;
-
-    if (!m_analyzeEventFilter) {
-        m_analyzeEventFilter = new AnalyzeEventFilter(this);
-        connect(m_analyzeEventFilter, &AnalyzeEventFilter::pressed,
-                this, &GenericEnginePlatform::analyzePressed, Qt::UniqueConnection);
-        m_rootWindow->installEventFilter(m_analyzeEventFilter);
-    }
-
+    startAnalyze(socket);
 }
 
 void GenericEnginePlatform::stopAnalyzeCommand(ITransportClient *socket)
 {
     qCDebug(categoryGenericEnginePlatform) << Q_FUNC_INFO << socket;
 
-    if (!m_analyzeSocket)
-        return;
-
-    m_analyzeSocket = nullptr;
-
-    if (m_analyzeEventFilter) {
-        m_rootWindow->removeEventFilter(m_analyzeEventFilter);
-        m_analyzeEventFilter->deleteLater();
-        m_analyzeEventFilter = nullptr;
-    }
+    stopAnalyze();
 }
 
 void GenericEnginePlatform::findStrategy_id(ITransportClient* socket,

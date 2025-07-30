@@ -40,6 +40,9 @@ public:
     virtual QPointF mapToGlobal(const QPointF &point) = 0;
     virtual QString getObjectId(QObject *item) = 0;
 
+    virtual void startAnalyze(ITransportClient* client) = 0;
+    virtual void stopAnalyze() = 0;
+
 public slots:
     virtual void initialize() = 0;
     virtual void focusWindowChanged(QWindow *w) = 0;
